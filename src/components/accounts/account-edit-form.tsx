@@ -7,10 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   balanceFieldLabel,
+  cardInputsFromSignedBalance,
   institutionLabel,
   isLiabilityAccount,
   openingBalanceHint,
+  parseMoney,
+  signedBalanceFromCardInputs,
 } from "@/lib/account-types";
+import { formatCurrency } from "@/lib/utils";
 import { updateAccount } from "@/modules/accounts/api";
 import type { Account } from "@/types";
 
@@ -23,10 +27,15 @@ export function AccountEditForm({ account, onDone }: AccountEditFormProps) {
   const queryClient = useQueryClient();
   const isCc = account.account_type === "credit_card";
   const owed = isLiabilityAccount(account.account_type);
+  const initial = cardInputsFromSignedBalance(
+    parseMoney(account.current_balance)
+  );
 
   const [name, setName] = useState(account.name);
   const [institution, setInstitution] = useState(account.institution_name ?? "");
   const [creditLimit, setCreditLimit] = useState(account.credit_limit ?? "");
+  const [usedLimit, setUsedLimit] = useState(String(initial.usedLimit));
+  const [creditOnCard, setCreditOnCard] = useState(String(initial.creditOnCard));
   const [balance, setBalance] = useState(account.current_balance);
 
   const saveMut = useMutation({
@@ -38,10 +47,20 @@ export function AccountEditForm({ account, onDone }: AccountEditFormProps) {
       if (isCc && creditLimit !== "") {
         payload.credit_limit = parseFloat(creditLimit) || 0;
       }
-      const nextBalance = parseFloat(balance);
-      const current = parseFloat(account.current_balance);
-      if (!Number.isNaN(nextBalance) && nextBalance !== current) {
-        payload.current_outstanding = nextBalance;
+
+      let nextSigned: number;
+      if (isCc) {
+        nextSigned = signedBalanceFromCardInputs(
+          parseFloat(usedLimit) || 0,
+          parseFloat(creditOnCard) || 0
+        );
+      } else {
+        nextSigned = parseFloat(balance);
+      }
+
+      const current = parseMoney(account.current_balance);
+      if (!Number.isNaN(nextSigned) && nextSigned !== current) {
+        payload.current_outstanding = nextSigned;
       }
       return updateAccount(account.id, payload);
     },
@@ -54,20 +73,23 @@ export function AccountEditForm({ account, onDone }: AccountEditFormProps) {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const nextBalance = parseFloat(balance);
-    if (Number.isNaN(nextBalance)) return;
     saveMut.mutate();
   }
 
   const limitNum = creditLimit !== "" ? parseFloat(creditLimit) : null;
-  const balanceNum = parseFloat(balance);
+  const usedNum = parseFloat(usedLimit) || 0;
+  const creditNum = parseFloat(creditOnCard) || 0;
   const overLimit =
     isCc &&
     limitNum != null &&
     limitNum > 0 &&
-    !Number.isNaN(balanceNum) &&
-    balanceNum > 0 &&
-    balanceNum > limitNum;
+    creditNum <= 0 &&
+    usedNum > limitNum;
+
+  const previewAvailable =
+    isCc && limitNum != null && limitNum > 0
+      ? Math.max(0, limitNum - (creditNum > 0 ? 0 : usedNum))
+      : null;
 
   return (
     <form onSubmit={handleSubmit} className="mt-4 space-y-3 border-t pt-4">
@@ -87,35 +109,56 @@ export function AccountEditForm({ account, onDone }: AccountEditFormProps) {
         />
       </div>
       {isCc && (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label>Credit limit</Label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0.01"
+                value={creditLimit}
+                onChange={(e) => setCreditLimit(e.target.value)}
+                placeholder="Total line on card"
+              />
+            </div>
+            <div>
+              <Label>Used limit</Label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                value={usedLimit}
+                onChange={(e) => setUsedLimit(e.target.value)}
+                disabled={creditNum > 0}
+              />
+              <p className="mt-1 text-xs text-zinc-500">
+                {openingBalanceHint("credit_card")}
+              </p>
+            </div>
+          </div>
           <div>
-            <Label>Credit limit</Label>
+            <Label>Credit on card (overpayment)</Label>
             <Input
               type="number"
               step="0.01"
-              min="0.01"
-              value={creditLimit}
-              onChange={(e) => setCreditLimit(e.target.value)}
-              placeholder="Max limit on card"
+              min="0"
+              value={creditOnCard}
+              onChange={(e) => setCreditOnCard(e.target.value)}
+              placeholder="0 if none"
             />
             <p className="mt-1 text-xs text-zinc-500">
-              Not counted as an asset — only tracks how much you can borrow.
+              Optional. If set, used limit is treated as 0 and available stays
+              at your full limit.
             </p>
           </div>
-          <div>
-            <Label>Current balance</Label>
-            <Input
-              type="number"
-              step="0.01"
-              value={balance}
-              onChange={(e) => setBalance(e.target.value)}
-              required
-            />
-            <p className="mt-1 text-xs text-zinc-500">
-              {openingBalanceHint("credit_card")}
+          {previewAvailable != null && (
+            <p className="text-sm text-emerald-700 dark:text-emerald-400">
+              Available credit: {formatCurrency(previewAvailable)} (limit − used
+              limit)
             </p>
-          </div>
-        </div>
+          )}
+        </>
       )}
       {!isCc && (
         <div>
@@ -134,7 +177,7 @@ export function AccountEditForm({ account, onDone }: AccountEditFormProps) {
       )}
       {overLimit && (
         <p className="text-sm text-red-600">
-          Outstanding cannot exceed credit limit.
+          Used limit cannot exceed credit limit.
         </p>
       )}
       {saveMut.error && (

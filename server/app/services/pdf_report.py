@@ -97,7 +97,7 @@ def build_finance_report_pdf(data: FinanceReportData) -> bytes:
     story.append(Spacer(1, 10))
 
     if data.accounts:
-        acc_rows = [["Account", "Type", "Balance"]]
+        acc_rows = [["Account", "Type", "Balance / used limit"]]
         for a in data.accounts:
             acc_rows.append([a["name"], a["type"], _money(a["balance"])])
         t1 = Table(acc_rows, colWidths=[70 * mm, 45 * mm, 45 * mm])

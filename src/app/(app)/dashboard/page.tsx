@@ -5,7 +5,13 @@ import Link from "next/link";
 import { ExpenseChart } from "@/components/charts/expense-chart";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
-import { accountTypeLabel, partitionAccounts } from "@/lib/account-types";
+import {
+  accountTypeLabel,
+  creditCardDisplayFromAccount,
+  creditCardLimit,
+  parseMoney,
+  partitionAccounts,
+} from "@/lib/account-types";
 import { formatCurrency } from "@/lib/utils";
 import { fetchAccountSummary, listAccounts } from "@/modules/accounts/api";
 import { listCategories } from "@/modules/categories/api";
@@ -150,22 +156,42 @@ export default function DashboardPage() {
                 <span>{formatCurrency(a.current_balance)}</span>
               </li>
             ))}
-            {liabilities.map((a) => (
-              <li
-                key={a.id}
-                className="flex justify-between text-amber-800 dark:text-amber-300"
-              >
-                <span>
-                  {a.name}{" "}
-                  <span className="text-xs text-zinc-500">
-                    ({accountTypeLabel(a.account_type)})
+            {liabilities.map((a) => {
+              const isCc = a.account_type === "credit_card";
+              const cc = isCc
+                ? creditCardDisplayFromAccount(
+                    creditCardLimit(a),
+                    parseMoney(a.current_balance)
+                  )
+                : null;
+              return (
+                <li
+                  key={a.id}
+                  className="flex justify-between text-amber-800 dark:text-amber-300"
+                >
+                  <span>
+                    {a.name}{" "}
+                    <span className="text-xs text-zinc-500">
+                      ({accountTypeLabel(a.account_type)})
+                    </span>
                   </span>
-                </span>
-                <span>
-                  owed {formatCurrency(a.current_balance)}
-                </span>
-              </li>
-            ))}
+                  <span className="text-right tabular-nums">
+                    {isCc && cc ? (
+                      <>
+                        used {formatCurrency(cc.usedLimit)}
+                        {cc.limit != null && (
+                          <span className="block text-xs text-zinc-500">
+                            avail {formatCurrency(cc.available ?? 0)}
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <>owed {formatCurrency(a.current_balance)}</>
+                    )}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
           <Link
             href="/accounts"

@@ -12,17 +12,14 @@ import {
   ACCOUNT_TYPE_OPTIONS,
   accountTypeLabel,
   balanceCaption,
-  creditCardAvailable,
-  creditCardCreditOnAccount,
+  creditCardDisplayFromAccount,
   creditCardLimit,
-  creditCardOverLimitAmount,
-  creditCardUtilization,
   institutionLabel,
-  parseMoney,
   isLiabilityAccount,
   openingBalanceHint,
   openingBalanceLabel,
   partitionAccounts,
+  signedBalanceFromCardInputs,
 } from "@/lib/account-types";
 import { formatCurrency } from "@/lib/utils";
 import {
@@ -40,6 +37,8 @@ export default function AccountsPage() {
   const [name, setName] = useState("");
   const [accountType, setAccountType] = useState("bank");
   const [openingBalance, setOpeningBalance] = useState("0");
+  const [usedLimit, setUsedLimit] = useState("0");
+  const [creditOnCard, setCreditOnCard] = useState("0");
   const [institutionName, setInstitutionName] = useState("");
   const [creditLimit, setCreditLimit] = useState("");
 
@@ -68,23 +67,33 @@ export default function AccountsPage() {
   });
 
   const createMut = useMutation({
-    mutationFn: () =>
-      createAccount({
+    mutationFn: () => {
+      const opening =
+        accountType === "credit_card"
+          ? signedBalanceFromCardInputs(
+              parseFloat(usedLimit) || 0,
+              parseFloat(creditOnCard) || 0
+            )
+          : parseFloat(openingBalance) || 0;
+      return createAccount({
         name,
         account_type: accountType,
-        opening_balance: parseFloat(openingBalance) || 0,
+        opening_balance: opening,
         institution_name: institutionName.trim() || undefined,
         credit_limit:
           accountType === "credit_card" && creditLimit
             ? parseFloat(creditLimit)
             : undefined,
-      }),
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["accounts"] });
       queryClient.invalidateQueries({ queryKey: ["account-summary"] });
       setShowForm(false);
       setName("");
       setOpeningBalance("0");
+      setUsedLimit("0");
+      setCreditOnCard("0");
       setInstitutionName("");
       setCreditLimit("");
       setAccountType("bank");
@@ -93,33 +102,49 @@ export default function AccountsPage() {
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
-    const owed = isLiabilityAccount(accountType);
-    const label = owed ? "amount owed" : "opening balance";
+    let detail = openingBalance;
+    if (accountType === "credit_card") {
+      detail = `used limit ${usedLimit}`;
+      if (parseFloat(creditOnCard) > 0) {
+        detail += `, credit on card ${creditOnCard}`;
+      }
+    } else if (isLiabilityAccount(accountType)) {
+      detail = `amount owed ${openingBalance}`;
+    }
     if (
       !confirm(
-        `Add "${name}" (${accountTypeLabel(accountType)}) with ${label} ${openingBalance}?`
+        `Add "${name}" (${accountTypeLabel(accountType)}) with ${detail}?`
       )
     )
       return;
     createMut.mutate();
   }
 
-  const openingNum = parseFloat(openingBalance) || 0;
+  const usedNum = parseFloat(usedLimit) || 0;
+  const creditNum = parseFloat(creditOnCard) || 0;
   const ccOverLimit =
     accountType === "credit_card" &&
     creditLimit !== "" &&
-    openingNum > 0 &&
-    openingNum > (parseFloat(creditLimit) || 0);
+    creditNum <= 0 &&
+    usedNum > 0 &&
+    usedNum > (parseFloat(creditLimit) || 0);
+
+  const createPreviewAvailable =
+    accountType === "credit_card" &&
+    creditLimit !== "" &&
+    parseFloat(creditLimit) > 0
+      ? Math.max(0, parseFloat(creditLimit) - (creditNum > 0 ? 0 : usedNum))
+      : null;
 
   function renderAccountCard(acc: Account) {
     const owed = isLiabilityAccount(acc.account_type);
     const isCc = acc.account_type === "credit_card";
-    const limit = creditCardLimit(acc);
-    const balanceNum = parseMoney(acc.current_balance);
-    const available = creditCardAvailable(acc);
-    const cardCredit = creditCardCreditOnAccount(acc);
-    const overLimit = creditCardOverLimitAmount(acc);
-    const utilization = creditCardUtilization(acc);
+    const cc = isCc
+      ? creditCardDisplayFromAccount(
+          creditCardLimit(acc),
+          parseFloat(acc.current_balance) || 0
+        )
+      : null;
     const isEditing = editingId === acc.id;
 
     return (
@@ -136,75 +161,69 @@ export default function AccountsPage() {
               {accountTypeLabel(acc.account_type)}
               {acc.institution_name ? ` · ${acc.institution_name}` : ""}
             </p>
-            {isCc ? (
+            {isCc && cc ? (
               <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-3">
                 <div>
-                  <dt className="text-zinc-500">Limit</dt>
+                  <dt className="text-zinc-500">Credit limit</dt>
                   <dd className="font-medium tabular-nums">
-                    {limit != null ? formatCurrency(limit) : "—"}
+                    {cc.limit != null ? formatCurrency(cc.limit) : "—"}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-zinc-500">Balance</dt>
-                  <dd
-                    className={`font-medium tabular-nums ${
-                      parseMoney(acc.current_balance) < 0
-                        ? "text-emerald-700 dark:text-emerald-400"
-                        : "text-amber-700 dark:text-amber-400"
-                    }`}
-                  >
-                    {formatCurrency(acc.current_balance)}
+                  <dt className="text-zinc-500">Used limit</dt>
+                  <dd className="font-medium tabular-nums text-amber-700 dark:text-amber-400">
+                    {formatCurrency(cc.usedLimit)}
                   </dd>
                 </div>
                 <div>
                   <dt className="text-zinc-500">Available</dt>
                   <dd
                     className={`font-medium tabular-nums ${
-                      available != null && available < 0
+                      cc.available != null && cc.available < 0
                         ? "text-red-700 dark:text-red-400"
                         : "text-emerald-700 dark:text-emerald-400"
                     }`}
                   >
-                    {available != null
-                      ? formatCurrency(available)
+                    {cc.available != null
+                      ? formatCurrency(cc.available)
                       : "Set limit"}
                   </dd>
                 </div>
               </dl>
-            ) : (
+            ) : !isCc ? (
               <p className="mt-1 text-xs text-zinc-400">
                 {balanceCaption(acc)}
               </p>
-            )}
-            {cardCredit != null && (
+            ) : null}
+            {isCc && cc && cc.creditOnCard > 0 && (
               <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400">
-                Credit balance {formatCurrency(cardCredit)} — available stays at{" "}
-                {limit != null ? formatCurrency(limit) : "limit"}
+                Credit on card {formatCurrency(cc.creditOnCard)} — available
+                stays at {cc.limit != null ? formatCurrency(cc.limit) : "limit"}
               </p>
             )}
-            {overLimit != null && (
+            {isCc && cc && cc.overLimit > 0 && (
               <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                Over limit by {formatCurrency(overLimit)} (owed{" "}
-                {formatCurrency(balanceNum)} vs limit{" "}
-                {limit != null ? formatCurrency(limit) : "—"})
+                Over limit by {formatCurrency(cc.overLimit)} (used{" "}
+                {formatCurrency(cc.usedLimit)} vs limit{" "}
+                {cc.limit != null ? formatCurrency(cc.limit) : "—"})
               </p>
             )}
-            {utilization != null && (
+            {isCc && cc && cc.utilizationPct != null && (
               <div className="mt-2">
                 <div className="h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800">
                   <div
                     className={`h-full rounded-full ${
-                      utilization >= 90
+                      cc.utilizationPct >= 90
                         ? "bg-red-500"
-                        : utilization >= 70
+                        : cc.utilizationPct >= 70
                           ? "bg-amber-500"
                           : "bg-emerald-500"
                     }`}
-                    style={{ width: `${utilization}%` }}
+                    style={{ width: `${cc.utilizationPct}%` }}
                   />
                 </div>
                 <p className="mt-0.5 text-xs text-zinc-500">
-                  {utilization}% of limit used
+                  {cc.utilizationPct}% of limit used
                 </p>
               </div>
             )}
@@ -321,8 +340,7 @@ export default function AccountsPage() {
                   {formatCurrency(availableCredit)}
                 </p>
                 <p className="mt-0.5 text-xs text-zinc-500">
-                  Sum of per-card available (limit − owed; credit keeps full
-                  limit)
+                  Sum of per-card available (limit − used limit)
                 </p>
                 {parseFloat(summary.total_credit_on_cards || "0") > 0 && (
                   <p className="mt-0.5 text-xs text-emerald-600">
@@ -384,35 +402,50 @@ export default function AccountsPage() {
               />
             </div>
             {accountType === "credit_card" ? (
-              <div className="grid gap-4 sm:grid-cols-2">
+              <>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <Label>Credit limit</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      value={creditLimit}
+                      onChange={(e) => setCreditLimit(e.target.value)}
+                      placeholder="Total line on card"
+                    />
+                  </div>
+                  <div>
+                    <Label>Used limit</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={usedLimit}
+                      onChange={(e) => setUsedLimit(e.target.value)}
+                      disabled={creditNum > 0}
+                    />
+                    <p className="mt-1 text-xs text-zinc-500">
+                      {openingBalanceHint(accountType)}
+                    </p>
+                  </div>
+                </div>
                 <div>
-                  <Label>Credit limit</Label>
+                  <Label>Credit on card (overpayment)</Label>
                   <Input
                     type="number"
                     step="0.01"
-                    min="0.01"
-                    value={creditLimit}
-                    onChange={(e) => setCreditLimit(e.target.value)}
-                    placeholder="Maximum on the card"
+                    min="0"
+                    value={creditOnCard}
+                    onChange={(e) => setCreditOnCard(e.target.value)}
                   />
-                  <p className="mt-1 text-xs text-zinc-500">
-                    Not added to assets — used to show available credit.
-                  </p>
                 </div>
-                <div>
-                  <Label>Current balance</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={openingBalance}
-                    onChange={(e) => setOpeningBalance(e.target.value)}
-                    required
-                  />
-                  <p className="mt-1 text-xs text-zinc-500">
-                    {openingBalanceHint(accountType)}
+                {createPreviewAvailable != null && (
+                  <p className="text-sm text-emerald-700 dark:text-emerald-400">
+                    Available credit: {formatCurrency(createPreviewAvailable)}
                   </p>
-                </div>
-              </div>
+                )}
+              </>
             ) : (
               <div>
                 <Label>{openingBalanceLabel(accountType)}</Label>
@@ -429,7 +462,7 @@ export default function AccountsPage() {
             )}
             {ccOverLimit && (
               <p className="text-sm text-red-600">
-                Outstanding cannot exceed credit limit.
+                Used limit cannot exceed credit limit.
               </p>
             )}
             {createMut.error && (

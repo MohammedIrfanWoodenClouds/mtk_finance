@@ -1,8 +1,10 @@
 import {
-  creditCardAmountOwed,
+  cardInputsFromSignedBalance,
   creditCardAvailableFrom,
   creditCardCreditBalance,
-  creditCardOverLimit,
+  creditCardDisplayFromAccount,
+  creditCardUsedLimit,
+  signedBalanceFromCardInputs,
 } from "@/lib/credit-card-math";
 import type { Account } from "@/types";
 
@@ -59,7 +61,7 @@ export function accountTypeLabel(accountType: string): string {
 
 export function openingBalanceLabel(accountType: string): string {
   if (accountType === "credit_card") {
-    return "Current balance";
+    return "Used limit";
   }
   if (accountType === "loan" || accountType === "loan_personal") {
     return "Outstanding loan balance";
@@ -69,7 +71,7 @@ export function openingBalanceLabel(accountType: string): string {
 
 export function openingBalanceHint(accountType: string): string {
   if (accountType === "credit_card") {
-    return "Positive = owed. Negative = overpayment (credit); available stays at your limit.";
+    return "How much of your limit is used right now. Available = limit − used limit.";
   }
   if (isLiabilityAccount(accountType)) {
     return "Positive = owed. Negative = lender owes you or overpaid balance.";
@@ -98,6 +100,9 @@ export interface BalanceDisplay {
 
 export function balanceCaption(account: Account): string {
   const bal = parseMoney(account.current_balance);
+  if (account.account_type === "credit_card") {
+    return "Used limit";
+  }
   if (!isLiabilityAccount(account.account_type)) {
     return bal < 0 ? "Overdraft" : "Balance";
   }
@@ -121,15 +126,19 @@ export function creditCardLimit(account: Account): number | null {
 export function creditCardAvailable(account: Account): number | null {
   const limit = creditCardLimit(account);
   if (limit == null) return null;
-  const balance = parseMoney(account.current_balance);
-  return creditCardAvailableFrom(limit, balance);
+  return creditCardAvailableFrom(limit, parseMoney(account.current_balance));
+}
+
+export function creditCardUsedLimitOnAccount(account: Account): number {
+  return creditCardUsedLimit(parseMoney(account.current_balance));
 }
 
 export function creditCardOverLimitAmount(account: Account): number | null {
-  const limit = creditCardLimit(account);
-  if (limit == null) return null;
-  const over = creditCardOverLimit(limit, parseMoney(account.current_balance));
-  return over > 0 ? over : null;
+  const d = creditCardDisplayFromAccount(
+    creditCardLimit(account),
+    parseMoney(account.current_balance)
+  );
+  return d.overLimit > 0 ? d.overLimit : null;
 }
 
 export function creditCardCreditOnAccount(account: Account): number | null {
@@ -139,16 +148,27 @@ export function creditCardCreditOnAccount(account: Account): number | null {
 }
 
 export function creditCardUtilization(account: Account): number | null {
-  const limit = creditCardLimit(account);
-  if (limit == null || limit <= 0) return null;
-  const owed = creditCardAmountOwed(parseMoney(account.current_balance));
-  if (owed <= 0) return null;
-  return Math.min(100, Math.round((owed / limit) * 100));
+  const d = creditCardDisplayFromAccount(
+    creditCardLimit(account),
+    parseMoney(account.current_balance)
+  );
+  return d.utilizationPct;
 }
 
-/** Human-readable balance for selectors and lists */
+/** Human-readable label for account selectors */
 export function formatAccountBalanceLabel(account: Account): string {
   const bal = parseMoney(account.current_balance);
+  if (account.account_type === "credit_card") {
+    const { usedLimit, creditOnCard } = cardInputsFromSignedBalance(bal);
+    const limit = creditCardLimit(account);
+    if (creditOnCard > 0) {
+      return `credit ${creditOnCard.toFixed(2)}`;
+    }
+    if (limit != null) {
+      return `used ${usedLimit.toFixed(2)} / ${limit.toFixed(0)}`;
+    }
+    return `used ${usedLimit.toFixed(2)}`;
+  }
   if (isLiabilityAccount(account.account_type)) {
     if (bal < 0) return `credit ${Math.abs(bal).toFixed(2)}`;
     if (bal === 0) return "nothing owed";
@@ -157,6 +177,12 @@ export function formatAccountBalanceLabel(account: Account): string {
   if (bal < 0) return `overdraft ${Math.abs(bal).toFixed(2)}`;
   return bal.toFixed(2);
 }
+
+export {
+  cardInputsFromSignedBalance,
+  creditCardDisplayFromAccount,
+  signedBalanceFromCardInputs,
+};
 
 export function balanceFieldLabel(accountType: string): string {
   return openingBalanceLabel(accountType);

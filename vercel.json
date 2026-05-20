@@ -17,8 +17,7 @@
   "crons": [
     {
       "path": "/api/v1/cron/daily-report",
-      "schedule": "59 23 * * *",
-      "timezone": "Asia/Kolkata"
+      "schedule": "29 18 * * *"
     }
   ],
   "rewrites": [

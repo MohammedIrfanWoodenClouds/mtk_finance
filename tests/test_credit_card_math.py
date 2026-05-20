@@ -1,6 +1,10 @@
 from decimal import Decimal
 
-from app.services.credit_card_math import available_credit, credit_balance, amount_owed
+from app.services.credit_card_math import (
+    available_credit,
+    credit_balance,
+    used_limit,
+)
 
 
 def test_credit_balance_keeps_full_limit():
@@ -8,7 +12,7 @@ def test_credit_balance_keeps_full_limit():
     balance = Decimal("-1300")
     assert available_credit(limit, balance) == Decimal("33000")
     assert credit_balance(balance) == Decimal("1300")
-    assert amount_owed(balance) == Decimal("0")
+    assert used_limit(balance) == Decimal("0")
     # Wrong formula users must never see:
     assert balance - limit == Decimal("-34300")
 

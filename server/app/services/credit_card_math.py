@@ -1,12 +1,10 @@
 """Credit card balance semantics (signed balance stored on Account).
 
-Positive balance = amount owed on the statement.
+Positive balance = used limit (amount charged on the line).
 Negative balance = credit / overpayment on the card.
 
-Available credit (per Capital One / standard issuer math):
-  - If you owe nothing (including overpayment): available = credit limit
-  - If you owe amount D: available = credit limit − D
-  - If D > limit: available is negative (over limit)
+Available credit = credit limit − used limit
+  (used limit = max(0, balance); full limit available when balance < 0)
 
 Never use ``balance - limit`` with a negative balance — that wrongly yields
 -(limit + |credit|), e.g. -1300 - 33000 = -34300.
@@ -15,9 +13,14 @@ Never use ``balance - limit`` with a negative balance — that wrongly yields
 from decimal import Decimal
 
 
-def amount_owed(balance: Decimal) -> Decimal:
-    """Debt portion of signed balance (≥ 0)."""
+def used_limit(balance: Decimal) -> Decimal:
+    """Portion of the credit line in use (≥ 0)."""
     return max(Decimal("0"), balance)
+
+
+def amount_owed(balance: Decimal) -> Decimal:
+    """Alias for used_limit (ledger liability amount)."""
+    return used_limit(balance)
 
 
 def credit_balance(balance: Decimal) -> Decimal:
@@ -30,14 +33,13 @@ def available_credit(limit: Decimal, balance: Decimal) -> Decimal:
     if limit <= 0:
         return Decimal("0")
     if balance < 0:
-        # Credit on card: owed is zero, full limit remains available
         return limit
-    # balance ≥ 0 counts as statement debt (may exceed limit)
-    return limit - balance
+    return limit - used_limit(balance)
 
 
 def over_limit_amount(limit: Decimal, balance: Decimal) -> Decimal:
-    """How far past the limit when owed exceeds limit (≥ 0)."""
-    if limit <= 0 or balance <= limit:
+    """How far used limit exceeds the credit line (≥ 0)."""
+    used = used_limit(balance)
+    if limit <= 0 or used <= limit:
         return Decimal("0")
-    return balance - limit
+    return used - limit

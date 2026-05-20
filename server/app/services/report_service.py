@@ -185,13 +185,13 @@ async def build_finance_report(
         extra = ""
         if a.account_type == "credit_card" and a.credit_limit:
             avail = available_credit(a.credit_limit, bal)
-            extra = f", avail {_money(avail)}"
+            used = amount_owed(bal)
+            extra = f", used limit {_money(used)}, avail {_money(avail)}"
             if bal < 0:
-                extra += f", credit {_money(-bal)}"
-            elif amount_owed(bal) > 0:
-                extra += f", owed {_money(amount_owed(bal))}"
+                extra += f", credit on card {_money(-bal)}"
+        display_bal = amount_owed(bal) if a.account_type == "credit_card" else bal
         account_rows.append(
-            {"name": a.name, "type": label + extra, "balance": bal}
+            {"name": a.name, "type": label + extra, "balance": display_bal}
         )
 
     tx_rows, income, expense, period_summary = _build_period_context(

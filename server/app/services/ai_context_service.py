@@ -8,7 +8,7 @@ from app.constants import ACCOUNT_TYPE_LABELS, is_liability_account
 from app.models.category import Category
 from app.models.transaction import Transaction
 from app.services.balance_service import list_user_accounts, summarize_accounts
-from app.services.credit_card_math import amount_owed, available_credit
+from app.services.credit_card_math import amount_owed, available_credit, used_limit
 
 
 def _decimal_str(v: Decimal | None) -> str:
@@ -70,17 +70,18 @@ def build_finance_context(db: Session, user_id: UUID) -> str:
                 avail = available_credit(a.credit_limit, bal)
                 extra = (
                     f", limit {_decimal_str(a.credit_limit)}, "
+                    f"used limit {_decimal_str(used_limit(bal))}, "
                     f"available {_decimal_str(avail)}"
                 )
                 if bal < 0:
-                    extra += f", credit balance {_decimal_str(-bal)}"
-                elif amount_owed(bal) > 0:
-                    extra += f", owed {_decimal_str(amount_owed(bal))}"
+                    extra += f", credit on card {_decimal_str(-bal)}"
             if a.institution_name:
                 extra += f", lender/issuer: {a.institution_name}"
             bal = a.current_balance or Decimal("0")
             if a.account_type == "credit_card":
-                bal_part = f"balance {_decimal_str(bal)}"
+                bal_part = f"used limit {_decimal_str(used_limit(bal))}"
+                if bal < 0:
+                    bal_part += f", credit on card {_decimal_str(-bal)}"
             else:
                 bal_part = f"owed {_decimal_str(bal)}"
             lines.append(f"- {a.name} ({label}): {bal_part}{extra}")
