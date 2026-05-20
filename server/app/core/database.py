@@ -8,7 +8,10 @@ from app.core.config import get_settings
 
 settings = get_settings()
 
-_engine_kwargs: dict = {"pool_pre_ping": True}
+_engine_kwargs: dict = {
+    "pool_pre_ping": True,
+    "connect_args": {"connect_timeout": 15},
+}
 if settings.VERCEL_ENV:
     # Serverless: one connection per invocation, no pooled idle connections
     _engine_kwargs["poolclass"] = NullPool

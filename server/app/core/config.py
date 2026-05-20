@@ -77,27 +77,38 @@ class Settings(BaseSettings):
     MAX_LOGIN_ATTEMPTS: int = 5
     LOGIN_LOCKOUT_MINUTES: int = 15
 
+    @staticmethod
+    def _normalize_database_url(url: str) -> str:
+        if url.startswith("postgresql://"):
+            url = url.replace("postgresql://", "postgresql+psycopg://", 1)
+        parsed = urlparse(url)
+        params = parse_qs(parsed.query) if parsed.query else {}
+        for key in ("pgbouncer",):
+            params.pop(key, None)
+        host = (parsed.hostname or "").lower()
+        if "supabase" in host and "sslmode" not in params:
+            params["sslmode"] = ["require"]
+        query = urlencode({k: vals[0] for k, vals in params.items()})
+        parsed = parsed._replace(query=query)
+        return urlunparse(parsed)
+
     @field_validator("DATABASE_URL", "DIRECT_URL", mode="before")
     @classmethod
     def normalize_database_url(cls, v: str | None) -> str | None:
         if v is None or not isinstance(v, str):
             return v
-        url = v.strip()
-        if url.startswith("postgresql://"):
-            url = url.replace("postgresql://", "postgresql+psycopg://", 1)
-        parsed = urlparse(url)
-        if parsed.query:
-            params = parse_qs(parsed.query)
-            for key in ("pgbouncer",):
-                params.pop(key, None)
-            query = urlencode({k: vals[0] for k, vals in params.items()})
-            parsed = parsed._replace(query=query)
-            url = urlunparse(parsed)
-        return url
+        return cls._normalize_database_url(v.strip())
 
     @property
     def sqlalchemy_database_uri(self) -> str:
-        """Prefer DIRECT_URL for migrations; fall back to DATABASE_URL."""
+        """Runtime DB URI. On Vercel always use pooler (DATABASE_URL), not DIRECT_URL."""
+        if self.VERCEL_ENV:
+            return self.DATABASE_URL
+        return self.DIRECT_URL or self.DATABASE_URL
+
+    @property
+    def migration_database_uri(self) -> str:
+        """Alembic / local migrations — prefer direct host when set."""
         return self.DIRECT_URL or self.DATABASE_URL
 
     @property

@@ -97,6 +97,8 @@ def health(db: Session = Depends(get_db)):
         "service": settings.PROJECT_NAME,
         "environment": settings.ENVIRONMENT,
     }
+    if not db_status["connected"]:
+        payload["database_error"] = db_status["message"][:300]
     if not schema["ok"]:
         payload["schema"] = {"ok": False, "missing": schema["missing"]}
     if settings.ENVIRONMENT == "local":

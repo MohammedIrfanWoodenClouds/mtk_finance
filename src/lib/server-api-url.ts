@@ -8,6 +8,10 @@ export function getServerApiBaseUrl(): string {
   if (explicit) {
     return explicit.replace(/\/$/, "");
   }
+  const site = process.env.SITE_URL?.trim();
+  if (site) {
+    return site.replace(/\/$/, "");
+  }
   if (process.env.VERCEL_URL) {
     return `https://${process.env.VERCEL_URL}`;
   }

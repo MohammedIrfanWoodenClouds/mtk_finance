@@ -49,7 +49,8 @@ Default admin (seeded on API startup): `admin@mtkfin.com` / `pass123` — change
 | Variable | Required | Notes |
 |----------|----------|--------|
 | `ENVIRONMENT` | Yes | `production` |
-| `DATABASE_URL` | Yes | Supabase pooler URI |
+| `DATABASE_URL` | Yes | Supabase **Session pooler** URI (port 5432). Required on Vercel. |
+| `DIRECT_URL` | No | Local migrations only — **do not set on Vercel** |
 | `JWT_SECRET_KEY` / `JWT_REFRESH_SECRET_KEY` | Yes | Strong random strings |
 | `SITE_URL` | Yes | `https://your-app.vercel.app` |
 | `NEXT_PUBLIC_API_URL` | Yes | Same as `SITE_URL` |
