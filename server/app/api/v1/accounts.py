@@ -77,3 +77,16 @@ def update_account(
     db.commit()
     db.refresh(account)
     return account
+
+
+@router.delete("/{account_id}", status_code=204)
+def delete_account(
+    account_id: UUID,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    account = account_service.get_account(db, user.id, account_id)
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+    account_service.delete_account(db, user.id, account)
+    db.commit()

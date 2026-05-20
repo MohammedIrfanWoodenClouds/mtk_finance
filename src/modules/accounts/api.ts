@@ -39,3 +39,9 @@ export async function updateAccount(
     body: JSON.stringify(data),
   });
 }
+
+export async function deleteAccount(id: string) {
+  return apiFetch<void>(`/api/v1/accounts/${id}`, {
+    method: "DELETE",
+  });
+}

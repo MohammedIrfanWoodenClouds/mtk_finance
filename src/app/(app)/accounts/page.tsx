@@ -27,6 +27,7 @@ import {
 import { formatCurrency } from "@/lib/utils";
 import {
   createAccount,
+  deleteAccount,
   fetchAccountSummary,
   listAccounts,
 } from "@/modules/accounts/api";
@@ -56,6 +57,15 @@ export default function AccountsPage() {
     () => partitionAccounts(accounts),
     [accounts]
   );
+
+  const deleteMut = useMutation({
+    mutationFn: (id: string) => deleteAccount(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["accounts"] });
+      queryClient.invalidateQueries({ queryKey: ["account-summary"] });
+      setEditingId(null);
+    },
+  });
 
   const createMut = useMutation({
     mutationFn: () =>
@@ -209,7 +219,7 @@ export default function AccountsPage() {
             </p>
           )}
         </div>
-        <div className="mt-3 flex justify-end">
+        <div className="mt-3 flex justify-end gap-2">
           <Button
             type="button"
             size="sm"
@@ -217,6 +227,21 @@ export default function AccountsPage() {
             onClick={() => setEditingId(isEditing ? null : acc.id)}
           >
             {isEditing ? "Close" : "Edit"}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="destructive"
+            disabled={deleteMut.isPending}
+            onClick={() => {
+              const msg = acc.name
+                ? `Delete "${acc.name}"? It will be removed from your list. Past transactions stay in your history.`
+                : "Delete this account?";
+              if (!confirm(msg)) return;
+              deleteMut.mutate(acc.id);
+            }}
+          >
+            Delete
           </Button>
         </div>
         {isEditing && (
@@ -420,6 +445,12 @@ export default function AccountsPage() {
             </Button>
           </form>
         </Card>
+      )}
+
+      {deleteMut.error && (
+        <p className="text-sm text-red-600">
+          {(deleteMut.error as Error).message}
+        </p>
       )}
 
       {isLoading ? (

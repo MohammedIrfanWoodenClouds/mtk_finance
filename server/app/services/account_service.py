@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.constants import validate_user_account_type
 from app.ledger.engine import LedgerEngine, LedgerError
 from app.models.account import Account
+from app.models.category import Category
 from app.schemas.account import AccountCreate, AccountUpdate
 
 
@@ -125,3 +126,39 @@ def get_account(db: Session, user_id: UUID, account_id: UUID) -> Account | None:
         .filter(Account.id == account_id, Account.user_id == user_id)
         .first()
     )
+
+
+def _assert_account_deletable(account: Account) -> None:
+    if account.is_system:
+        raise HTTPException(status_code=403, detail="Cannot delete system account")
+    if account.account_type.startswith("category_"):
+        raise HTTPException(
+            status_code=403,
+            detail="Cannot delete category ledger account",
+        )
+
+
+def delete_account(db: Session, user_id: UUID, account: Account) -> None:
+    """Deactivate account (soft delete). Transaction history is preserved."""
+    _assert_account_deletable(account)
+
+    category_ref = (
+        db.query(Category)
+        .filter(
+            Category.user_id == user_id,
+            Category.ledger_account_id == account.id,
+            Category.is_active.is_(True),
+        )
+        .first()
+    )
+    if category_ref:
+        raise HTTPException(
+            status_code=409,
+            detail=f'Account is linked to category "{category_ref.name}". '
+            "Deactivate or delete that category first.",
+        )
+
+    if not account.is_active:
+        raise HTTPException(status_code=409, detail="Account is already deleted")
+
+    account.is_active = False
