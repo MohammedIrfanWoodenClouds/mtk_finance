@@ -1,0 +1,52 @@
+{
+  "name": "mtk-finance",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n web,api -c blue,green \"npm run dev:web\" \"npm run dev:api\"",
+    "dev:web": "next dev -p 3000",
+    "dev:api": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev-api.ps1",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "clean": "node -e \"try{require('fs').rmSync('.next',{recursive:true,force:true})}catch(e){}\"",
+    "db:migrate": "cross-env PYTHONPATH=server .venv/Scripts/python -m alembic upgrade head",
+    "db:revision": "cross-env PYTHONPATH=server .venv/Scripts/python -m alembic revision --autogenerate -m",
+    "db:check": "cross-env PYTHONPATH=server .venv/Scripts/python scripts/db_check.py",
+    "db:seed": "cross-env PYTHONPATH=server .venv/Scripts/python scripts/db_check.py"
+  },
+  "dependencies": {
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-label": "^2.1.8",
+    "@radix-ui/react-select": "^2.2.6",
+    "@radix-ui/react-slot": "^1.2.4",
+    "@radix-ui/react-tabs": "^1.1.13",
+    "@tanstack/react-query": "^5.100.11",
+    "apexcharts": "^5.12.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.16.0",
+    "next": "15.5.18",
+    "nodemailer": "^6.10.1",
+    "react": "19.1.0",
+    "react-apexcharts": "^2.1.0",
+    "react-dom": "19.1.0",
+    "tailwind-merge": "^3.6.0",
+    "zustand": "^5.0.13"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/nodemailer": "^6.4.23",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "concurrently": "^9.1.2",
+    "cross-env": "^7.0.3",
+    "dotenv": "^16.4.7",
+    "eslint": "^9",
+    "eslint-config-next": "15.5.18",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
