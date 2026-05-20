@@ -187,8 +187,9 @@ export function AccountEditForm({ account, onDone }: AccountEditFormProps) {
         </div>
       )}
       {overLimit && (
-        <p className="text-sm text-red-600">
-          Used limit cannot exceed credit limit.
+        <p className="text-sm text-amber-700 dark:text-amber-400">
+          Over limit — available credit is negative. You can still save to record
+          issuer over-limit balances.
         </p>
       )}
       {saveMut.error && (
@@ -200,7 +201,7 @@ export function AccountEditForm({ account, onDone }: AccountEditFormProps) {
         <Button
           type="submit"
           size="sm"
-          disabled={saveMut.isPending || overLimit}
+          disabled={saveMut.isPending}
         >
           {saveMut.isPending ? "Saving…" : "Save changes"}
         </Button>

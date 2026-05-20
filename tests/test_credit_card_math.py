@@ -9,7 +9,6 @@ from app.services.credit_card_math import (
     inputs_from_signed_balance,
     signed_balance_from_inputs,
     used_limit,
-    validate_used_vs_limit,
 )
 
 FIXTURES = Path(__file__).parent / "fixtures" / "credit_card_cases.json"
@@ -64,10 +63,8 @@ def test_credit_card_metrics_fixture_cases():
             assert m.over_limit == Decimal(case["over_limit"]), case["name"]
 
 
-def test_validate_used_vs_limit():
-    validate_used_vs_limit(Decimal("33000"), Decimal("10000"))
-    try:
-        validate_used_vs_limit(Decimal("33000"), Decimal("40000"))
-        raise AssertionError("expected ValueError")
-    except ValueError:
-        pass
+def test_over_limit_metrics():
+    m = credit_card_metrics(Decimal("33000"), Decimal("34300"))
+    assert m.available == Decimal("-1300")
+    assert m.over_limit == Decimal("1300")
+    assert m.utilization_pct == 104

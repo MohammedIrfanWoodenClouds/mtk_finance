@@ -9,9 +9,6 @@ from app.ledger.engine import LedgerEngine, LedgerError
 from app.models.account import Account
 from app.models.category import Category
 from app.schemas.account import AccountCreate, AccountUpdate
-from app.services.credit_card_math import validate_used_vs_limit
-
-
 def create_account(
     db: Session, user_id: UUID, data: AccountCreate
 ) -> Account:
@@ -25,12 +22,6 @@ def create_account(
             status_code=400,
             detail="Credit limit applies only to credit_card accounts",
         )
-
-    if data.account_type == "credit_card" and data.credit_limit is not None:
-        try:
-            validate_used_vs_limit(data.credit_limit, data.opening_balance)
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e)) from e
 
     account = Account(
         user_id=user_id,
@@ -56,18 +47,6 @@ def create_account(
     return account
 
 
-def _validate_outstanding_vs_limit(account: Account, outstanding: Decimal) -> None:
-    if account.account_type != "credit_card":
-        return
-    limit = account.credit_limit
-    if limit is None or limit <= 0:
-        return
-    try:
-        validate_used_vs_limit(limit, outstanding)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
-
-
 def update_account(
     db: Session, user_id: UUID, account: Account, data: AccountUpdate
 ) -> Account:
@@ -88,10 +67,8 @@ def update_account(
                 detail="Credit limit applies only to credit_card accounts",
             )
         account.credit_limit = data.credit_limit
-        _validate_outstanding_vs_limit(account, account.current_balance)
 
     if data.current_outstanding is not None:
-        _validate_outstanding_vs_limit(account, data.current_outstanding)
         ledger = LedgerEngine(db, user_id)
         try:
             ledger.post_reconcile_balance(
@@ -101,9 +78,6 @@ def update_account(
             )
         except LedgerError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
-
-    if data.credit_limit is not None:
-        _validate_outstanding_vs_limit(account, account.current_balance)
 
     return account
 

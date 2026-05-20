@@ -480,8 +480,8 @@ export default function AccountsPage() {
               </div>
             )}
             {ccOverLimit && (
-              <p className="text-sm text-red-600">
-                Used limit cannot exceed credit limit.
+              <p className="text-sm text-amber-700 dark:text-amber-400">
+                Over limit — available credit will be negative. You can still save.
               </p>
             )}
             {createMut.error && (
@@ -491,7 +491,7 @@ export default function AccountsPage() {
             )}
             <Button
               type="submit"
-              disabled={createMut.isPending || ccOverLimit}
+              disabled={createMut.isPending}
             >
               {createMut.isPending ? "Saving…" : "Save account"}
             </Button>

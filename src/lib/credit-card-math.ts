@@ -80,7 +80,7 @@ export function creditCardDisplayFromAccount(
     limit != null && limit > 0 ? creditCardOverLimit(limit, signedBalance) : 0;
   const utilizationPct =
     limit != null && limit > 0 && usedLimit > 0
-      ? Math.min(100, Math.round((usedLimit / limit) * 100))
+      ? Math.round((usedLimit / limit) * 100)
       : null;
 
   return {

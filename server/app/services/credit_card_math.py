@@ -90,7 +90,7 @@ def credit_card_metrics(
         avail = available_credit(limit, balance)
         over = over_limit_amount(limit, balance)
         if used > 0:
-            util = int(min(100, round((used / limit) * 100)))
+            util = int(round((used / limit) * 100))
 
     return CreditCardMetrics(
         used_limit=used,
@@ -103,8 +103,5 @@ def credit_card_metrics(
 
 
 def validate_used_vs_limit(limit: Decimal | None, balance: Decimal) -> None:
-    """Raise ValueError when used limit exceeds the credit line."""
-    if limit is None or limit <= 0:
-        return
-    if used_limit(balance) > limit:
-        raise ValueError("Used limit cannot exceed credit limit")
+    """No-op: over-limit balances are allowed (negative available credit)."""
+    del limit, balance
