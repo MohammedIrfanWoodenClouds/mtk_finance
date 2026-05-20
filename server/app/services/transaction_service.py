@@ -5,7 +5,11 @@ from uuid import UUID
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.constants import STATUS_FINALIZED, STATUS_POSTED
+from app.constants import (
+    STATUS_FINALIZED,
+    STATUS_POSTED,
+    TRANSACTION_TRANSFER,
+)
 from app.ledger.engine import LedgerEngine, LedgerError
 from app.models.category import Category
 from app.models.transaction import Transaction
@@ -28,6 +32,11 @@ def _resolve_category_ledger_account(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid category",
         )
+    if category.type != "expense":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Transfer fee must use an expense category",
+        )
     return category.ledger_account_id
 
 
@@ -42,18 +51,34 @@ def create_transaction(
         counter = get_account(db, user_id, data.counter_account_id)
         if not counter:
             raise HTTPException(status_code=404, detail="Counter account not found")
+        if data.account_id == data.counter_account_id:
+            raise HTTPException(
+                status_code=400, detail="Cannot transfer to the same account"
+            )
 
-    ledger_category_id = _resolve_category_ledger_account(
-        db, user_id, data.category_id
-    )
+    transfer_fee = Decimal("0")
+    fee_ledger_account_id: UUID | None = None
+    ledger_category_id: UUID | None = None
+
+    if data.transaction_type == TRANSACTION_TRANSFER:
+        transfer_fee = data.transfer_fee or Decimal("0")
+        if transfer_fee > 0:
+            fee_ledger_account_id = _resolve_category_ledger_account(
+                db, user_id, data.category_id
+            )
+    elif data.category_id:
+        ledger_category_id = _resolve_category_ledger_account(
+            db, user_id, data.category_id
+        )
 
     tx = Transaction(
         user_id=user_id,
         transaction_type=data.transaction_type,
         account_id=data.account_id,
-        category_id=data.category_id,
+        category_id=data.category_id if data.transaction_type != TRANSACTION_TRANSFER else None,
         counter_account_id=data.counter_account_id,
         amount=data.amount,
+        transfer_fee=transfer_fee,
         transaction_date=data.transaction_date,
         notes=data.notes,
         status="draft",
@@ -69,7 +94,9 @@ def create_transaction(
             ledger.create_journal_for_transaction(tx)
             tx.category_id = original_category
         else:
-            ledger.create_journal_for_transaction(tx)
+            ledger.create_journal_for_transaction(
+                tx, fee_ledger_account_id=fee_ledger_account_id
+            )
     except LedgerError as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(e)) from e
@@ -167,6 +194,7 @@ def create_correction(
             category_id=original.category_id,
             counter_account_id=original.counter_account_id,
             amount=data.amount,
+            transfer_fee=original.transfer_fee,
             transaction_date=data.transaction_date or original.transaction_date,
             notes=data.notes or original.notes,
         )

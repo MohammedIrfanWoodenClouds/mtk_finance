@@ -46,6 +46,7 @@ export interface Transaction {
   category_id: string | null;
   counter_account_id: string | null;
   amount: string;
+  transfer_fee: string;
   transaction_date: string;
   notes: string | null;
   status: string;
@@ -58,6 +59,10 @@ export interface AccountSummary {
   total_assets: string;
   total_liabilities: string;
   net_worth: string;
+  total_credit_limit: string;
+  total_credit_outstanding: string;
+  available_credit: string;
+  has_credit_limits: boolean;
 }
 
 export interface TransactionListResponse {

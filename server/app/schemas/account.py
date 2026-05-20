@@ -52,9 +52,20 @@ class AccountUpdate(BaseModel):
     name: str | None = None
     institution_name: str | None = None
     credit_limit: Decimal | None = None
+    current_outstanding: Decimal | None = Field(
+        default=None,
+        description="Set liability/asset balance (amount owed for cards/loans)",
+    )
     color: str | None = None
     icon: str | None = None
     is_active: bool | None = None
+
+    @field_validator("credit_limit", "current_outstanding")
+    @classmethod
+    def non_negative_money(cls, v: Decimal | None) -> Decimal | None:
+        if v is not None and v < 0:
+            raise ValueError("Amount cannot be negative")
+        return v
 
     @field_validator("credit_limit")
     @classmethod
@@ -86,3 +97,7 @@ class AccountSummaryResponse(BaseModel):
     total_assets: Decimal
     total_liabilities: Decimal
     net_worth: Decimal
+    total_credit_limit: Decimal = Decimal("0")
+    total_credit_outstanding: Decimal = Decimal("0")
+    available_credit: Decimal = Decimal("0")
+    has_credit_limits: bool = False

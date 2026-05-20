@@ -96,3 +96,35 @@ export function balanceCaption(account: Account): string {
   }
   return "Amount owed";
 }
+
+export function parseMoney(value: string | null | undefined): number {
+  if (value == null || value === "") return 0;
+  const n = parseFloat(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+export function creditCardLimit(account: Account): number | null {
+  if (account.account_type !== "credit_card" || !account.credit_limit) {
+    return null;
+  }
+  const limit = parseMoney(account.credit_limit);
+  return limit > 0 ? limit : null;
+}
+
+export function creditCardAvailable(account: Account): number | null {
+  const limit = creditCardLimit(account);
+  if (limit == null) return null;
+  const owed = parseMoney(account.current_balance);
+  return Math.max(0, limit - owed);
+}
+
+export function creditCardUtilization(account: Account): number | null {
+  const limit = creditCardLimit(account);
+  if (limit == null || limit <= 0) return null;
+  const owed = parseMoney(account.current_balance);
+  return Math.min(100, Math.round((owed / limit) * 100));
+}
+
+export function balanceFieldLabel(accountType: string): string {
+  return openingBalanceLabel(accountType);
+}

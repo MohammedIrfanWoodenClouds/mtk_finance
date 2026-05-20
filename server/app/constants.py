@@ -31,6 +31,7 @@ DEFAULT_CATEGORIES = [
     ("Transport", "expense", "#f97316"),
     ("Shopping", "expense", "#eab308"),
     ("Bills", "expense", "#6366f1"),
+    ("Transfer fees", "expense", "#64748b"),
     ("Health", "expense", "#ec4899"),
     ("Entertainment", "expense", "#8b5cf6"),
     ("Stocks", "investment", "#0ea5e9"),

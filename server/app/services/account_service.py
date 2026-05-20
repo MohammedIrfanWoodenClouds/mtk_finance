@@ -5,7 +5,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.constants import validate_user_account_type
-from app.ledger.engine import LedgerEngine
+from app.ledger.engine import LedgerEngine, LedgerError
 from app.models.account import Account
 from app.schemas.account import AccountCreate, AccountUpdate
 
@@ -28,7 +28,7 @@ def create_account(
         if data.opening_balance > data.credit_limit:
             raise HTTPException(
                 status_code=400,
-                detail="Amount owed cannot exceed credit limit",
+                detail="Outstanding cannot exceed credit limit",
             )
 
     account = Account(
@@ -50,17 +50,27 @@ def create_account(
     ledger = LedgerEngine(db, user_id)
     ledger.post_opening_balance(account)
     account.current_balance = data.opening_balance
+    account.opening_balance = data.opening_balance
 
     return account
 
 
+def _validate_outstanding_vs_limit(account: Account, outstanding: Decimal) -> None:
+    if account.account_type == "credit_card" and account.credit_limit is not None:
+        if outstanding > account.credit_limit:
+            raise HTTPException(
+                status_code=400,
+                detail="Outstanding cannot exceed credit limit",
+            )
+
+
 def update_account(
-    db: Session, account: Account, data: AccountUpdate
+    db: Session, user_id: UUID, account: Account, data: AccountUpdate
 ) -> Account:
     if data.name is not None:
-        account.name = data.name
+        account.name = data.name.strip()
     if data.institution_name is not None:
-        account.institution_name = data.institution_name
+        account.institution_name = data.institution_name.strip() or None
     if data.color is not None:
         account.color = data.color
     if data.icon is not None:
@@ -74,6 +84,23 @@ def update_account(
                 detail="Credit limit applies only to credit_card accounts",
             )
         account.credit_limit = data.credit_limit
+        _validate_outstanding_vs_limit(account, account.current_balance)
+
+    if data.current_outstanding is not None:
+        _validate_outstanding_vs_limit(account, data.current_outstanding)
+        ledger = LedgerEngine(db, user_id)
+        try:
+            ledger.post_reconcile_balance(
+                account,
+                data.current_outstanding,
+                note=f"Updated balance for {account.name}",
+            )
+        except LedgerError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+
+    if data.credit_limit is not None:
+        _validate_outstanding_vs_limit(account, account.current_balance)
+
     return account
 
 

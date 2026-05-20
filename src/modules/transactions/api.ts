@@ -25,6 +25,7 @@ export async function createTransaction(data: {
   category_id?: string;
   counter_account_id?: string;
   amount: number;
+  transfer_fee?: number;
   transaction_date: string;
   notes?: string;
 }) {

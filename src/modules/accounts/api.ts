@@ -30,6 +30,7 @@ export async function updateAccount(
     is_active: boolean;
     color: string;
     credit_limit: number;
+    current_outstanding: number;
     institution_name: string;
   }>
 ) {

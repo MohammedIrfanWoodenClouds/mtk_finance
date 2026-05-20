@@ -79,6 +79,12 @@ export default function DashboardPage() {
           </p>
           <p className="mt-1 text-xs text-zinc-500">
             Credit cards & loans you owe
+            {summary?.has_credit_limits && (
+              <>
+                {" "}
+                · {formatCurrency(summary.available_credit)} credit available
+              </>
+            )}
           </p>
         </Card>
       </div>

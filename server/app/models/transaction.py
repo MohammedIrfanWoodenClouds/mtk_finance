@@ -29,6 +29,9 @@ class Transaction(Base):
         UUID(as_uuid=True), ForeignKey("accounts.id"), nullable=True
     )
     amount: Mapped[Decimal] = mapped_column(Numeric(18, 2))
+    transfer_fee: Mapped[Decimal] = mapped_column(
+        Numeric(18, 2), default=Decimal("0")
+    )
     transaction_date: Mapped[date] = mapped_column(Date, index=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="posted", index=True)

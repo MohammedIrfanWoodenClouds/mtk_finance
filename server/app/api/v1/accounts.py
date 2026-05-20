@@ -73,7 +73,7 @@ def update_account(
         raise HTTPException(status_code=404, detail="Account not found")
     if account.is_system:
         raise HTTPException(status_code=403, detail="Cannot modify system account")
-    account = account_service.update_account(db, account, data)
+    account = account_service.update_account(db, user.id, account, data)
     db.commit()
     db.refresh(account)
     return account
