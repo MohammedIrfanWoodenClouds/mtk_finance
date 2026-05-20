@@ -12,7 +12,10 @@ CREATE TABLE IF NOT EXISTS alembic_version (
   version_num VARCHAR(32) NOT NULL PRIMARY KEY
 );
 
+UPDATE alembic_version
+SET version_num = '003_transaction_transfer_fee'
+WHERE version_num IS NOT NULL;
+
 INSERT INTO alembic_version (version_num)
-VALUES ('003_transaction_transfer_fee')
-ON CONFLICT (version_num) DO UPDATE
-SET version_num = EXCLUDED.version_num;
+SELECT '003_transaction_transfer_fee'
+WHERE NOT EXISTS (SELECT 1 FROM alembic_version);
