@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AccountSelect } from "@/components/accounts/account-select";
 import { listAccounts } from "@/modules/accounts/api";
 import { listCategories } from "@/modules/categories/api";
 import { createTransaction } from "@/modules/transactions/api";
@@ -87,19 +88,15 @@ export default function NewTransactionPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <Label>Account</Label>
-            <select
-              className="flex h-10 w-full rounded-lg border border-zinc-300 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+            <AccountSelect
+              accounts={accounts}
               value={accountId}
-              onChange={(e) => setAccountId(e.target.value)}
+              onChange={setAccountId}
               required
-            >
-              <option value="">Select account</option>
-              {userAccounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </select>
+            />
+            <p className="mt-1 text-xs text-zinc-500">
+              Expenses on a credit card increase what you owe; income reduces it.
+            </p>
           </div>
           <div>
             <Label>Category</Label>

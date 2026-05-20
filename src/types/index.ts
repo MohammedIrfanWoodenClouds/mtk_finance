@@ -18,6 +18,7 @@ export interface Account {
   opening_balance: string;
   current_balance: string;
   institution_name: string | null;
+  credit_limit: string | null;
   color: string | null;
   icon: string | null;
   is_active: boolean;
@@ -51,6 +52,12 @@ export interface Transaction {
   finalized_at: string | null;
   corrects_transaction_id: string | null;
   created_at: string;
+}
+
+export interface AccountSummary {
+  total_assets: string;
+  total_liabilities: string;
+  net_worth: string;
 }
 
 export interface TransactionListResponse {

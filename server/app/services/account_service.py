@@ -1,8 +1,10 @@
 from decimal import Decimal
 from uuid import UUID
 
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from app.constants import validate_user_account_type
 from app.ledger.engine import LedgerEngine
 from app.models.account import Account
 from app.schemas.account import AccountCreate, AccountUpdate
@@ -11,6 +13,24 @@ from app.schemas.account import AccountCreate, AccountUpdate
 def create_account(
     db: Session, user_id: UUID, data: AccountCreate
 ) -> Account:
+    try:
+        validate_user_account_type(data.account_type)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    if data.account_type != "credit_card" and data.credit_limit is not None:
+        raise HTTPException(
+            status_code=400,
+            detail="Credit limit applies only to credit_card accounts",
+        )
+
+    if data.account_type == "credit_card" and data.credit_limit is not None:
+        if data.opening_balance > data.credit_limit:
+            raise HTTPException(
+                status_code=400,
+                detail="Amount owed cannot exceed credit limit",
+            )
+
     account = Account(
         user_id=user_id,
         name=data.name,
@@ -18,6 +38,7 @@ def create_account(
         opening_balance=data.opening_balance,
         current_balance=Decimal("0"),
         institution_name=data.institution_name,
+        credit_limit=data.credit_limit if data.account_type == "credit_card" else None,
         color=data.color,
         icon=data.icon,
         is_active=True,
@@ -46,6 +67,13 @@ def update_account(
         account.icon = data.icon
     if data.is_active is not None:
         account.is_active = data.is_active
+    if data.credit_limit is not None:
+        if account.account_type != "credit_card":
+            raise HTTPException(
+                status_code=400,
+                detail="Credit limit applies only to credit_card accounts",
+            )
+        account.credit_limit = data.credit_limit
     return account
 
 

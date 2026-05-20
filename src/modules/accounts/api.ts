@@ -1,8 +1,12 @@
 import { apiFetch } from "@/lib/api";
-import type { Account } from "@/types";
+import type { Account, AccountSummary } from "@/types";
 
 export async function listAccounts() {
   return apiFetch<Account[]>("/api/v1/accounts");
+}
+
+export async function fetchAccountSummary() {
+  return apiFetch<AccountSummary>("/api/v1/accounts/summary");
 }
 
 export async function createAccount(data: {
@@ -10,6 +14,7 @@ export async function createAccount(data: {
   account_type: string;
   opening_balance: number;
   institution_name?: string;
+  credit_limit?: number;
   color?: string;
 }) {
   return apiFetch<Account>("/api/v1/accounts", {
@@ -20,7 +25,13 @@ export async function createAccount(data: {
 
 export async function updateAccount(
   id: string,
-  data: Partial<{ name: string; is_active: boolean; color: string }>
+  data: Partial<{
+    name: string;
+    is_active: boolean;
+    color: string;
+    credit_limit: number;
+    institution_name: string;
+  }>
 ) {
   return apiFetch<Account>(`/api/v1/accounts/${id}`, {
     method: "PATCH",

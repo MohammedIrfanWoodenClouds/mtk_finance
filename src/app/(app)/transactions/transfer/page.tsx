@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AccountSelect } from "@/components/accounts/account-select";
+import { isLiabilityAccount } from "@/lib/account-types";
 import { listAccounts } from "@/modules/accounts/api";
 import { createTransaction } from "@/modules/transactions/api";
 
@@ -50,9 +52,17 @@ export default function TransferPage() {
     if (fromId === toId) return;
     const fromName = userAccounts.find((a) => a.id === fromId)?.name;
     const toName = userAccounts.find((a) => a.id === toId)?.name;
+    const from = userAccounts.find((a) => a.id === fromId);
+    const to = userAccounts.find((a) => a.id === toId);
+    let hint = "";
+    if (from && to && isLiabilityAccount(to.account_type)) {
+      hint = " This pays down debt on the destination account.";
+    } else if (from && isLiabilityAccount(from.account_type)) {
+      hint = " This draws more on the credit/loan account (increases owed).";
+    }
     if (
       !confirm(
-        `Move ${amount} from ${fromName} to ${toName}? This will update both balances.`
+        `Move ${amount} from ${fromName} to ${toName}?${hint}`
       )
     )
       return;
@@ -67,36 +77,30 @@ export default function TransferPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <Label>From</Label>
-            <select
-              className="flex h-10 w-full rounded-lg border border-zinc-300 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+            <AccountSelect
+              accounts={accounts}
               value={fromId}
-              onChange={(e) => setFromId(e.target.value)}
+              onChange={setFromId}
+              excludeId={toId}
               required
-            >
-              <option value="">Select account</option>
-              {userAccounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </select>
+              placeholder="Pay from…"
+            />
           </div>
           <div>
             <Label>To</Label>
-            <select
-              className="flex h-10 w-full rounded-lg border border-zinc-300 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+            <AccountSelect
+              accounts={accounts}
               value={toId}
-              onChange={(e) => setToId(e.target.value)}
+              onChange={setToId}
+              excludeId={fromId}
               required
-            >
-              <option value="">Select account</option>
-              {userAccounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </select>
+              placeholder="Pay to…"
+            />
           </div>
+          <p className="text-xs text-zinc-500">
+            Pay a credit card or loan: transfer from bank → liability. Borrowing
+            more: transfer from liability → bank (increases owed).
+          </p>
           <div>
             <Label>Amount</Label>
             <Input

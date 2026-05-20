@@ -27,6 +27,9 @@ class Account(Base):
         Numeric(18, 2), default=Decimal("0")
     )
     institution_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    credit_limit: Mapped[Decimal | None] = mapped_column(
+        Numeric(18, 2), nullable=True
+    )
     color: Mapped[str | None] = mapped_column(String(20), nullable=True)
     icon: Mapped[str | None] = mapped_column(String(50), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)

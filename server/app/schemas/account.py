@@ -2,26 +2,66 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from app.constants import ALL_USER_ACCOUNT_TYPES, validate_user_account_type
 
 
 class AccountCreate(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     account_type: str = Field(
-        description="bank, cash, investment, credit_card, loan, equity"
+        description="bank, cash, investment, credit_card, loan, loan_personal"
     )
-    opening_balance: Decimal = Field(default=Decimal("0"))
-    institution_name: str | None = None
+    opening_balance: Decimal = Field(
+        default=Decimal("0"),
+        description="Assets: cash you have. Liabilities: amount currently owed.",
+    )
+    institution_name: str | None = Field(
+        default=None,
+        description="Bank name, card issuer, or lender (e.g. friend name)",
+    )
+    credit_limit: Decimal | None = Field(
+        default=None,
+        description="Credit card limit only (not your balance)",
+    )
     color: str | None = None
     icon: str | None = None
+
+    @field_validator("account_type")
+    @classmethod
+    def check_account_type(cls, v: str) -> str:
+        validate_user_account_type(v.strip())
+        return v.strip()
+
+    @field_validator("opening_balance")
+    @classmethod
+    def opening_non_negative(cls, v: Decimal) -> Decimal:
+        if v < 0:
+            raise ValueError("Opening balance cannot be negative")
+        return v
+
+    @field_validator("credit_limit")
+    @classmethod
+    def credit_limit_positive(cls, v: Decimal | None) -> Decimal | None:
+        if v is not None and v <= 0:
+            raise ValueError("Credit limit must be positive")
+        return v
 
 
 class AccountUpdate(BaseModel):
     name: str | None = None
     institution_name: str | None = None
+    credit_limit: Decimal | None = None
     color: str | None = None
     icon: str | None = None
     is_active: bool | None = None
+
+    @field_validator("credit_limit")
+    @classmethod
+    def credit_limit_positive(cls, v: Decimal | None) -> Decimal | None:
+        if v is not None and v <= 0:
+            raise ValueError("Credit limit must be positive")
+        return v
 
 
 class AccountResponse(BaseModel):
@@ -32,6 +72,7 @@ class AccountResponse(BaseModel):
     opening_balance: Decimal
     current_balance: Decimal
     institution_name: str | None
+    credit_limit: Decimal | None
     color: str | None
     icon: str | None
     is_active: bool
@@ -39,3 +80,9 @@ class AccountResponse(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class AccountSummaryResponse(BaseModel):
+    total_assets: Decimal
+    total_liabilities: Decimal
+    net_worth: Decimal

@@ -5,8 +5,9 @@ import Link from "next/link";
 import { ExpenseChart } from "@/components/charts/expense-chart";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
+import { accountTypeLabel, partitionAccounts } from "@/lib/account-types";
 import { formatCurrency } from "@/lib/utils";
-import { listAccounts } from "@/modules/accounts/api";
+import { fetchAccountSummary, listAccounts } from "@/modules/accounts/api";
 import { listCategories } from "@/modules/categories/api";
 import { listTransactions } from "@/modules/transactions/api";
 
@@ -14,6 +15,10 @@ export default function DashboardPage() {
   const { data: accounts = [] } = useQuery({
     queryKey: ["accounts"],
     queryFn: listAccounts,
+  });
+  const { data: summary } = useQuery({
+    queryKey: ["account-summary"],
+    queryFn: fetchAccountSummary,
   });
   const { data: categories = [] } = useQuery({
     queryKey: ["categories"],
@@ -24,14 +29,18 @@ export default function DashboardPage() {
     queryFn: () => listTransactions({ page: 1 }),
   });
 
-  const userAccounts = accounts.filter(
-    (a) => !a.is_system && !a.account_type.startsWith("category_")
-  );
-  const totalBalance = userAccounts.reduce(
-    (sum, a) => sum + parseFloat(a.current_balance),
-    0
-  );
+  const { assets, liabilities } = partitionAccounts(accounts);
   const recent = txData?.items.slice(0, 5) ?? [];
+
+  const totalAssets = summary
+    ? parseFloat(summary.total_assets)
+    : assets.reduce((s, a) => s + parseFloat(a.current_balance), 0);
+  const totalLiabilities = summary
+    ? parseFloat(summary.total_liabilities)
+    : liabilities.reduce((s, a) => s + parseFloat(a.current_balance), 0);
+  const netWorth = summary
+    ? parseFloat(summary.net_worth)
+    : totalAssets - totalLiabilities;
 
   return (
     <div className="space-y-6">
@@ -43,12 +52,36 @@ export default function DashboardPage() {
       </div>
 
       <Card className="bg-gradient-to-br from-emerald-600 to-emerald-700 text-white">
-        <p className="text-sm text-emerald-100">Total balance</p>
-        <p className="mt-1 text-3xl font-bold">{formatCurrency(totalBalance)}</p>
+        <p className="text-sm text-emerald-100">Net worth</p>
+        <p className="mt-1 text-3xl font-bold">{formatCurrency(netWorth)}</p>
         <p className="mt-2 text-xs text-emerald-100">
-          {userAccounts.length} active accounts
+          Assets {formatCurrency(totalAssets)} − owed{" "}
+          {formatCurrency(totalLiabilities)}
         </p>
       </Card>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Card>
+          <p className="text-xs font-medium uppercase text-zinc-500">Assets</p>
+          <p className="mt-1 text-xl font-semibold text-emerald-700 dark:text-emerald-400">
+            {formatCurrency(totalAssets)}
+          </p>
+          <p className="mt-1 text-xs text-zinc-500">
+            Bank, cash, investments you own
+          </p>
+        </Card>
+        <Card>
+          <p className="text-xs font-medium uppercase text-zinc-500">
+            Liabilities
+          </p>
+          <p className="mt-1 text-xl font-semibold text-amber-700 dark:text-amber-400">
+            {formatCurrency(totalLiabilities)}
+          </p>
+          <p className="mt-1 text-xs text-zinc-500">
+            Credit cards & loans you owe
+          </p>
+        </Card>
+      </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
@@ -100,6 +133,42 @@ export default function DashboardPage() {
           </Link>
         </Card>
       </div>
+
+      {(assets.length > 0 || liabilities.length > 0) && (
+        <Card>
+          <CardTitle className="mb-3">Accounts</CardTitle>
+          <ul className="space-y-2 text-sm">
+            {assets.map((a) => (
+              <li key={a.id} className="flex justify-between">
+                <span>{a.name}</span>
+                <span>{formatCurrency(a.current_balance)}</span>
+              </li>
+            ))}
+            {liabilities.map((a) => (
+              <li
+                key={a.id}
+                className="flex justify-between text-amber-800 dark:text-amber-300"
+              >
+                <span>
+                  {a.name}{" "}
+                  <span className="text-xs text-zinc-500">
+                    ({accountTypeLabel(a.account_type)})
+                  </span>
+                </span>
+                <span>
+                  owed {formatCurrency(a.current_balance)}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <Link
+            href="/accounts"
+            className="mt-3 block text-sm text-emerald-600 hover:underline"
+          >
+            Manage accounts
+          </Link>
+        </Card>
+      )}
     </div>
   );
 }

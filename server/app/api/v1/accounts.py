@@ -6,10 +6,26 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.user import User
-from app.schemas.account import AccountCreate, AccountResponse, AccountUpdate
+from app.schemas.account import (
+    AccountCreate,
+    AccountResponse,
+    AccountSummaryResponse,
+    AccountUpdate,
+)
 from app.services import account_service
+from app.services.balance_service import list_user_accounts, summarize_accounts
 
 router = APIRouter()
+
+
+@router.get("/summary", response_model=AccountSummaryResponse)
+def accounts_summary(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    accounts = list_user_accounts(db, user.id)
+    totals = summarize_accounts(accounts)
+    return AccountSummaryResponse(**totals)
 
 
 @router.get("", response_model=list[AccountResponse])

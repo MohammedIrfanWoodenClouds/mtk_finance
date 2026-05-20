@@ -1,6 +1,17 @@
 ACCOUNT_TYPE_ASSET = {"bank", "cash", "investment"}
-ACCOUNT_TYPE_LIABILITY = {"credit_card", "loan"}
+ACCOUNT_TYPE_LIABILITY = {"credit_card", "loan", "loan_personal"}
 ACCOUNT_TYPE_EQUITY = {"equity"}
+
+ALL_USER_ACCOUNT_TYPES = ACCOUNT_TYPE_ASSET | ACCOUNT_TYPE_LIABILITY
+
+ACCOUNT_TYPE_LABELS: dict[str, str] = {
+    "bank": "Savings / Bank",
+    "cash": "Cash wallet",
+    "investment": "Investment",
+    "credit_card": "Credit card",
+    "loan": "Bank loan",
+    "loan_personal": "Personal loan (friends & family)",
+}
 
 OPENING_BALANCE_EQUITY_NAME = "Opening Balance Equity"
 OPENING_BALANCE_EQUITY_TYPE = "equity"
@@ -25,3 +36,17 @@ DEFAULT_CATEGORIES = [
     ("Stocks", "investment", "#0ea5e9"),
     ("Mutual Funds", "investment", "#06b6d4"),
 ]
+
+
+def is_asset_account(account_type: str) -> bool:
+    return account_type in ACCOUNT_TYPE_ASSET
+
+
+def is_liability_account(account_type: str) -> bool:
+    return account_type in ACCOUNT_TYPE_LIABILITY
+
+
+def validate_user_account_type(account_type: str) -> None:
+    if account_type not in ALL_USER_ACCOUNT_TYPES:
+        allowed = ", ".join(sorted(ALL_USER_ACCOUNT_TYPES))
+        raise ValueError(f"Invalid account_type. Allowed: {allowed}")
