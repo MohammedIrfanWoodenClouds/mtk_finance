@@ -16,6 +16,7 @@ import {
   creditCardLimit,
   creditCardUtilization,
   institutionLabel,
+  parseMoney,
   isLiabilityAccount,
   openingBalanceHint,
   openingBalanceLabel,
@@ -91,10 +92,12 @@ export default function AccountsPage() {
     createMut.mutate();
   }
 
+  const openingNum = parseFloat(openingBalance) || 0;
   const ccOverLimit =
     accountType === "credit_card" &&
     creditLimit !== "" &&
-    (parseFloat(openingBalance) || 0) > (parseFloat(creditLimit) || 0);
+    openingNum > 0 &&
+    openingNum > (parseFloat(creditLimit) || 0);
 
   function renderAccountCard(acc: Account) {
     const owed = isLiabilityAccount(acc.account_type);
@@ -127,8 +130,14 @@ export default function AccountsPage() {
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-zinc-500">Outstanding</dt>
-                  <dd className="font-medium tabular-nums text-amber-700 dark:text-amber-400">
+                  <dt className="text-zinc-500">Balance</dt>
+                  <dd
+                    className={`font-medium tabular-nums ${
+                      parseMoney(acc.current_balance) < 0
+                        ? "text-emerald-700 dark:text-emerald-400"
+                        : "text-amber-700 dark:text-amber-400"
+                    }`}
+                  >
                     {formatCurrency(acc.current_balance)}
                   </dd>
                 </div>
@@ -326,7 +335,7 @@ export default function AccountsPage() {
                   <Input
                     type="number"
                     step="0.01"
-                    min="0"
+                    min="0.01"
                     value={creditLimit}
                     onChange={(e) => setCreditLimit(e.target.value)}
                     placeholder="Maximum on the card"
@@ -336,11 +345,10 @@ export default function AccountsPage() {
                   </p>
                 </div>
                 <div>
-                  <Label>Current outstanding</Label>
+                  <Label>Current balance</Label>
                   <Input
                     type="number"
                     step="0.01"
-                    min="0"
                     value={openingBalance}
                     onChange={(e) => setOpeningBalance(e.target.value)}
                     required
@@ -356,7 +364,6 @@ export default function AccountsPage() {
                 <Input
                   type="number"
                   step="0.01"
-                  min="0"
                   value={openingBalance}
                   onChange={(e) => setOpeningBalance(e.target.value)}
                 />

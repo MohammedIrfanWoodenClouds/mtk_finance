@@ -53,7 +53,7 @@ export function accountTypeLabel(accountType: string): string {
 
 export function openingBalanceLabel(accountType: string): string {
   if (accountType === "credit_card") {
-    return "Current amount owed";
+    return "Current balance";
   }
   if (accountType === "loan" || accountType === "loan_personal") {
     return "Outstanding loan balance";
@@ -63,12 +63,12 @@ export function openingBalanceLabel(accountType: string): string {
 
 export function openingBalanceHint(accountType: string): string {
   if (accountType === "credit_card") {
-    return "Statement balance you owe — not your credit limit or available credit.";
+    return "Positive = amount owed. Negative = credit on the card (overpayment).";
   }
   if (isLiabilityAccount(accountType)) {
-    return "How much you currently owe on this loan.";
+    return "Positive = owed. Negative = lender owes you or overpaid balance.";
   }
-  return "Cash or balance in this account today.";
+  return "Positive = funds available. Negative = overdraft.";
 }
 
 export function institutionLabel(accountType: string): string {
@@ -91,10 +91,11 @@ export interface BalanceDisplay {
 }
 
 export function balanceCaption(account: Account): string {
+  const bal = parseMoney(account.current_balance);
   if (!isLiabilityAccount(account.account_type)) {
-    return "Balance";
+    return bal < 0 ? "Overdraft" : "Balance";
   }
-  return "Amount owed";
+  return bal < 0 ? "Credit on account" : "Amount owed";
 }
 
 export function parseMoney(value: string | null | undefined): number {
@@ -115,14 +116,27 @@ export function creditCardAvailable(account: Account): number | null {
   const limit = creditCardLimit(account);
   if (limit == null) return null;
   const owed = parseMoney(account.current_balance);
-  return Math.max(0, limit - owed);
+  return limit - owed;
 }
 
 export function creditCardUtilization(account: Account): number | null {
   const limit = creditCardLimit(account);
   if (limit == null || limit <= 0) return null;
   const owed = parseMoney(account.current_balance);
+  if (owed <= 0) return null;
   return Math.min(100, Math.round((owed / limit) * 100));
+}
+
+/** Human-readable balance for selectors and lists */
+export function formatAccountBalanceLabel(account: Account): string {
+  const bal = parseMoney(account.current_balance);
+  if (isLiabilityAccount(account.account_type)) {
+    if (bal < 0) return `credit ${Math.abs(bal).toFixed(2)}`;
+    if (bal === 0) return "nothing owed";
+    return `owed ${bal.toFixed(2)}`;
+  }
+  if (bal < 0) return `overdraft ${Math.abs(bal).toFixed(2)}`;
+  return bal.toFixed(2);
 }
 
 export function balanceFieldLabel(accountType: string): string {

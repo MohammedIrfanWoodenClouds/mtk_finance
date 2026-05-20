@@ -55,14 +55,7 @@ export function AccountEditForm({ account, onDone }: AccountEditFormProps) {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const nextBalance = parseFloat(balance);
-    if (Number.isNaN(nextBalance) || nextBalance < 0) return;
-    if (
-      isCc &&
-      creditLimit !== "" &&
-      nextBalance > (parseFloat(creditLimit) || 0)
-    ) {
-      return;
-    }
+    if (Number.isNaN(nextBalance)) return;
     saveMut.mutate();
   }
 
@@ -73,6 +66,7 @@ export function AccountEditForm({ account, onDone }: AccountEditFormProps) {
     limitNum != null &&
     limitNum > 0 &&
     !Number.isNaN(balanceNum) &&
+    balanceNum > 0 &&
     balanceNum > limitNum;
 
   return (
@@ -99,7 +93,7 @@ export function AccountEditForm({ account, onDone }: AccountEditFormProps) {
             <Input
               type="number"
               step="0.01"
-              min="0"
+              min="0.01"
               value={creditLimit}
               onChange={(e) => setCreditLimit(e.target.value)}
               placeholder="Max limit on card"
@@ -109,17 +103,16 @@ export function AccountEditForm({ account, onDone }: AccountEditFormProps) {
             </p>
           </div>
           <div>
-            <Label>Current outstanding</Label>
+            <Label>Current balance</Label>
             <Input
               type="number"
               step="0.01"
-              min="0"
               value={balance}
               onChange={(e) => setBalance(e.target.value)}
               required
             />
             <p className="mt-1 text-xs text-zinc-500">
-              Statement balance you owe right now.
+              {openingBalanceHint("credit_card")}
             </p>
           </div>
         </div>
@@ -130,7 +123,6 @@ export function AccountEditForm({ account, onDone }: AccountEditFormProps) {
           <Input
             type="number"
             step="0.01"
-            min="0"
             value={balance}
             onChange={(e) => setBalance(e.target.value)}
             required

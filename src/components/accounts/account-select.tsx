@@ -4,10 +4,9 @@ import type { Account } from "@/types";
 import {
   accountTypeLabel,
   filterUserAccounts,
-  isLiabilityAccount,
+  formatAccountBalanceLabel,
   partitionAccounts,
 } from "@/lib/account-types";
-import { formatCurrency } from "@/lib/utils";
 
 type Props = {
   value: string;
@@ -30,10 +29,7 @@ export function AccountSelect({
   const { assets, liabilities } = partitionAccounts(user);
 
   function renderOption(a: Account) {
-    const owed = isLiabilityAccount(a.account_type);
-    const suffix = owed
-      ? ` — owed ${formatCurrency(a.current_balance)}`
-      : ` — ${formatCurrency(a.current_balance)}`;
+    const suffix = ` — ${formatAccountBalanceLabel(a)}`;
     return (
       <option key={a.id} value={a.id}>
         {a.name} ({accountTypeLabel(a.account_type)}

@@ -14,7 +14,10 @@ class AccountCreate(BaseModel):
     )
     opening_balance: Decimal = Field(
         default=Decimal("0"),
-        description="Assets: cash you have. Liabilities: amount currently owed.",
+        description=(
+            "Assets: balance (negative = overdraft). "
+            "Liabilities: owed (negative = credit/overpayment on card)."
+        ),
     )
     institution_name: str | None = Field(
         default=None,
@@ -33,13 +36,6 @@ class AccountCreate(BaseModel):
         validate_user_account_type(v.strip())
         return v.strip()
 
-    @field_validator("opening_balance")
-    @classmethod
-    def opening_non_negative(cls, v: Decimal) -> Decimal:
-        if v < 0:
-            raise ValueError("Opening balance cannot be negative")
-        return v
-
     @field_validator("credit_limit")
     @classmethod
     def credit_limit_positive(cls, v: Decimal | None) -> Decimal | None:
@@ -54,18 +50,11 @@ class AccountUpdate(BaseModel):
     credit_limit: Decimal | None = None
     current_outstanding: Decimal | None = Field(
         default=None,
-        description="Set liability/asset balance (amount owed for cards/loans)",
+        description="Account balance; negative allowed (overdraft / card credit)",
     )
     color: str | None = None
     icon: str | None = None
     is_active: bool | None = None
-
-    @field_validator("credit_limit", "current_outstanding")
-    @classmethod
-    def non_negative_money(cls, v: Decimal | None) -> Decimal | None:
-        if v is not None and v < 0:
-            raise ValueError("Amount cannot be negative")
-        return v
 
     @field_validator("credit_limit")
     @classmethod

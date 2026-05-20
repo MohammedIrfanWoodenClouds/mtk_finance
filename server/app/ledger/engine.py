@@ -104,10 +104,16 @@ class LedgerEngine:
                     LedgerLineInput(equity.id, debit=amount),
                 ]
         elif account.account_type in ACCOUNT_TYPE_LIABILITY:
-            lines = [
-                LedgerLineInput(account.id, credit=amount),
-                LedgerLineInput(equity.id, debit=amount),
-            ]
+            if account.opening_balance >= 0:
+                lines = [
+                    LedgerLineInput(account.id, credit=amount),
+                    LedgerLineInput(equity.id, debit=amount),
+                ]
+            else:
+                lines = [
+                    LedgerLineInput(account.id, debit=amount),
+                    LedgerLineInput(equity.id, credit=amount),
+                ]
         else:
             lines = [
                 LedgerLineInput(account.id, debit=amount),

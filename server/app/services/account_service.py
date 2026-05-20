@@ -24,12 +24,16 @@ def create_account(
             detail="Credit limit applies only to credit_card accounts",
         )
 
-    if data.account_type == "credit_card" and data.credit_limit is not None:
-        if data.opening_balance > data.credit_limit:
-            raise HTTPException(
-                status_code=400,
-                detail="Outstanding cannot exceed credit limit",
-            )
+    if (
+        data.account_type == "credit_card"
+        and data.credit_limit is not None
+        and data.opening_balance > 0
+        and data.opening_balance > data.credit_limit
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Outstanding cannot exceed credit limit",
+        )
 
     account = Account(
         user_id=user_id,
@@ -56,12 +60,16 @@ def create_account(
 
 
 def _validate_outstanding_vs_limit(account: Account, outstanding: Decimal) -> None:
-    if account.account_type == "credit_card" and account.credit_limit is not None:
-        if outstanding > account.credit_limit:
-            raise HTTPException(
-                status_code=400,
-                detail="Outstanding cannot exceed credit limit",
-            )
+    if (
+        account.account_type == "credit_card"
+        and account.credit_limit is not None
+        and outstanding > 0
+        and outstanding > account.credit_limit
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Outstanding cannot exceed credit limit",
+        )
 
 
 def update_account(

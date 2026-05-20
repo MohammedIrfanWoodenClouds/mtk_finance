@@ -25,8 +25,9 @@ def _credit_card_stats(accounts: list[Account]) -> dict[str, Decimal]:
         if acc.credit_limit is not None and acc.credit_limit > 0:
             total_limit += acc.credit_limit
             has_limit = True
+    # Negative outstanding = card credit; increases headroom beyond limit sum
     available = (
-        max(Decimal("0"), total_limit - total_outstanding) if has_limit else Decimal("0")
+        total_limit - total_outstanding if has_limit else Decimal("0")
     )
     return {
         "total_credit_limit": total_limit if has_limit else Decimal("0"),
