@@ -1,107 +1,77 @@
 # MTK Finance
 
-Personal finance management platform with ledger-based accounting, custom JWT auth, and a unified Next.js + FastAPI app deployable on Vercel.
+Personal finance management with ledger-based accounting, JWT auth, and a unified Next.js + FastAPI app on Vercel.
 
 ## Stack
 
 | Layer | Technology |
 |-------|------------|
 | Frontend | Next.js 15, React, Tailwind CSS, Zustand, TanStack Query, ApexCharts |
-| API | FastAPI, SQLAlchemy, Alembic, Pydantic (`server/`) |
+| API | FastAPI, SQLAlchemy, Alembic (`server/`) |
 | Database | PostgreSQL (Supabase) |
-| Deploy | Vercel (Next.js + Python serverless) |
+| Deploy | Vercel |
 
-## Project structure
+## Structure
 
 ```text
 mtk_finance/
-├── src/                 # Next.js UI (App Router)
-├── server/app/          # FastAPI + ledger engine
-├── public/
-├── alembic/             # Database migrations
-├── tests/
-├── .env                 # Single env file (frontend + API)
-├── package.json
-├── requirements.txt
+├── src/              # Next.js App Router
+├── server/app/       # FastAPI + ledger
+├── alembic/          # Migrations
+├── scripts/          # dev-api.ps1, db_check.py
+├── .env              # Local secrets (gitignored)
 └── vercel.json
 ```
 
-## Prerequisites
-
-- Node.js 20+
-- Python 3.12+
-- Supabase project with PostgreSQL enabled
-
-## Environment
+## Local setup
 
 ```bash
 cp .env.example .env
-```
-
-One [`.env`](.env) at the repo root — used by **Next.js** and **FastAPI**.
-
-### Default login (single user)
-
-| Field | Value |
-|-------|--------|
-| Email | `admin@mtkfin.com` |
-| Password | `pass123` |
-
-Created automatically on API startup. Change password in **Settings** after login.
-
-Registration is disabled.
-
-## Local development
-
-### 1. Install dependencies
-
-```bash
 npm install
-python -m venv .venv
-.venv\Scripts\activate          # Windows
+python -m venv .venv && .venv\Scripts\activate
 pip install -r requirements.txt
-```
-
-### 2. Configure Supabase `DATABASE_URL`
-
-In Supabase Dashboard → **Project Settings** → **Database** → **Connection string**, copy the **Session pooler** URI into `.env` as `DATABASE_URL` (use `postgresql+psycopg://` prefix).
-
-Test connection:
-
-```bash
-npm run db:check
-```
-
-### 3. Run migrations
-
-```bash
 npm run db:migrate
-```
-
-### 4. Start dev
-
-```bash
 npm run dev
 ```
 
 | Service | URL |
 |---------|-----|
 | App | http://localhost:3000 |
-| API (direct) | http://localhost:8000/api/docs |
-| API (proxied) | http://localhost:3000/api/v1/... |
+| API docs (local only) | http://localhost:8000/api/docs |
 
-**Troubleshooting:** If API routes return 404 but code looks correct, an old `uvicorn` may still be bound to port 8000 (often system Python without `PYTHONPATH=server`). Stop all dev servers, then on Windows run `Get-NetTCPConnection -LocalPort 8000` and end stray `python`/`uvicorn` processes before `npm run dev` again.
+Default admin (seeded on API startup): `admin@mtkfin.com` / `pass123` — change in **Settings** after login.
 
-**AI assistant:** Uses `GEMINI_API_KEY` with optional `GEMINI_API_KEY2` fallback (ideally from a **different** Google Cloud project — quotas are per project). Global + per-user rate limits protect quota; failed keys enter cooldown before reuse. If you see *quota exhausted*, enable billing in [Google AI Studio](https://aistudio.google.com/apikey) or add a second project key.
+## Production deployment (Vercel)
 
-## Vercel deployment
+1. Import repo (root directory `.`).
+2. Set **Environment variables** in Vercel (from `.env.example`):
 
-1. Import repo — **Root Directory:** `.` (repository root)
-2. Add env vars from [`.env.example`](.env.example) in Vercel dashboard
-3. Deploy — `vercel.json` routes `/api/v1/*` → `server/app/api/index.py`
-4. Run `npm run db:migrate` locally against production `DATABASE_URL`
+| Variable | Required | Notes |
+|----------|----------|--------|
+| `ENVIRONMENT` | Yes | `production` |
+| `DATABASE_URL` | Yes | Supabase pooler URI |
+| `JWT_SECRET_KEY` / `JWT_REFRESH_SECRET_KEY` | Yes | Strong random strings |
+| `SITE_URL` | Yes | `https://your-app.vercel.app` |
+| `NEXT_PUBLIC_API_URL` | Yes | Same as `SITE_URL` |
+| `BACKEND_CORS_ORIGINS` | Yes | Same as `SITE_URL` |
+| `GEMINI_API_KEY` | For AI | Optional `GEMINI_API_KEY2` |
+| `SMTP_*` + `MAIL_TO` | For email | Gmail app password |
+| `EMAIL_INTERNAL_SECRET` | For email | Random secret (Next ↔ API) |
 
-**Production URLs:** set `SITE_URL` and `NEXT_PUBLIC_API_URL` to your `https://*.vercel.app` URL.
+3. Deploy. Run migrations against production DB:
+
+```bash
+npm run db:migrate
+```
+
+4. Verify: `GET https://your-app.vercel.app/api/health`
+
+**Production behavior**
+
+- OpenAPI docs disabled (`ENVIRONMENT` ≠ `local`)
+- Registration disabled; single admin user
+- Password-reset emails go to `MAIL_TO`
+- No dev test scripts or stub API routes
 
 ## Scripts
 
@@ -110,35 +80,15 @@ npm run dev
 | `npm run dev` | Next.js + FastAPI |
 | `npm run build` | Production build |
 | `npm run db:migrate` | Apply migrations |
-| `npm run db:revision` | New migration |
+| `npm run db:check` | Test database connection |
 
-## Gmail email (Nodemailer)
+## Email (SMTP + MAIL_TO)
 
-1. Enable 2-Step Verification on your Google account
-2. Create an **App Password**: https://myaccount.google.com/apppasswords (Mail → Other → MTK Finance)
-3. Add to `.env`:
+All outbound mail is delivered to `MAIL_TO`. Configure Gmail app password in `.env` (see `.env.example`). Password reset: **Forgot password** on login.
 
-```env
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=your.email@gmail.com
-SMTP_PASS=xxxx xxxx xxxx xxxx
-SMTP_FROM=your.email@gmail.com
-EMAIL_INTERNAL_SECRET=any-random-long-string
-```
+## Finance Assistant
 
-Use the same `EMAIL_INTERNAL_SECRET` value in `.env` (Next and FastAPI both read the root file).
-
-4. Restart `npm run dev`
-5. Test: **Login** → **Forgot password?** → enter `admin@mtkfin.com`
-
-## Finance Assistant (AI)
-
-1. Get a key from [Google AI Studio](https://aistudio.google.com/apikey)
-2. Add to `.env`: `GEMINI_API_KEY=your-key`
-3. Open **Assistant** in the app sidebar
-
-The assistant reads your accounts and transactions (advisory only — never changes balances).
+Set `GEMINI_API_KEY` and `GEMINI_MODEL=gemini-flash-latest` in `.env`. Optional `GEMINI_API_KEY2` from another Google Cloud project.
 
 ## License
 

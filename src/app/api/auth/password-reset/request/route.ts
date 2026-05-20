@@ -46,8 +46,7 @@ export async function POST(request: Request) {
     try {
       const resetUrl = `${SITE_URL}/reset-password?token=${encodeURIComponent(data.reset_token)}`;
       await sendPasswordResetEmail(email, resetUrl);
-    } catch (e) {
-      console.error("Failed to send reset email:", e);
+    } catch {
       return NextResponse.json(
         { detail: "Could not send reset email. Check SMTP settings." },
         { status: 503 }
@@ -57,6 +56,5 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     message: "If the email exists, a reset link was sent",
-    email_sent: Boolean(data.reset_token && isEmailConfigured()),
   });
 }

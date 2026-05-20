@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export default function ForgotPasswordPage() {
-  const [email, setEmail] = useState("admin@mtkfin.com");
+  const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -40,7 +40,7 @@ export default function ForgotPasswordPage() {
     <Card className="p-6">
       <h1 className="mb-1 text-2xl font-bold">Forgot password</h1>
       <p className="mb-6 text-sm text-zinc-500">
-        We&apos;ll email you a reset link (Gmail SMTP)
+        We&apos;ll send a reset link to your configured inbox
       </p>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>

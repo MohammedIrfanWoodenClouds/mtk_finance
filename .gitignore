@@ -49,8 +49,10 @@ venv/
 *.log
 npm-debug.log*
 
-# Testing
+# Testing / tooling
 coverage/
+.pytest_cache/
+agent-tools/
 
 # Misc
 *.tsbuildinfo

@@ -20,11 +20,13 @@ async def lifespan(app: FastAPI):
     get_settings.cache_clear()
     reset_ai_runtime_state()
     settings = get_settings()
-    logger.info(
-        "AI assistant: %s key(s), models=%s",
-        len(settings.gemini_api_keys),
-        settings.gemini_models,
-    )
+
+    if settings.ENVIRONMENT == "local":
+        logger.info(
+            "AI assistant: %s key(s), models=%s",
+            len(settings.gemini_api_keys),
+            settings.gemini_models,
+        )
 
     db = SessionLocal()
     try:
@@ -39,13 +41,14 @@ async def lifespan(app: FastAPI):
 
 
 settings = get_settings()
-
+_show_docs = settings.ENVIRONMENT == "local"
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version="0.1.0",
-    docs_url="/api/docs",
-    openapi_url="/api/openapi.json",
+    docs_url="/api/docs" if _show_docs else None,
+    openapi_url="/api/openapi.json" if _show_docs else None,
+    redoc_url=None,
     lifespan=lifespan,
 )
 
@@ -63,8 +66,11 @@ app.include_router(api_router, prefix="/api/v1")
 @app.get("/api/health")
 def health(db: Session = Depends(get_db)):
     db_status = check_database(db)
-    return {
+    payload: dict = {
         "status": "ok" if db_status["connected"] else "degraded",
         "service": settings.PROJECT_NAME,
-        "database": db_status,
+        "environment": settings.ENVIRONMENT,
     }
+    if settings.ENVIRONMENT == "local":
+        payload["database"] = db_status
+    return payload

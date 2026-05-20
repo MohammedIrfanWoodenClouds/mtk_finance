@@ -31,9 +31,8 @@ Rules you MUST follow:
 """
 
 QUOTA_EXHAUSTED_USER_MESSAGE = (
-    "Gemini free-tier quota is used up for all configured models and API keys. "
-    "Enable billing at https://aistudio.google.com/apikey, wait for daily reset "
-    "(midnight Pacific), or set GEMINI_MODEL=gemini-flash-latest in .env if that model still has quota."
+    "Gemini API quota is used up for all configured models and keys. "
+    "Enable billing at https://aistudio.google.com/apikey or wait for daily limits to reset."
 )
 
 # (key_label, model_name) -> cooldown_until — quota is often per-model, not whole key

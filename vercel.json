@@ -18,13 +18,5 @@
       "source": "/api/health",
       "destination": "/server/app/api/index.py"
     },
-    {
-      "source": "/api/docs",
-      "destination": "/server/app/api/index.py"
-    },
-    {
-      "source": "/api/openapi.json",
-      "destination": "/server/app/api/index.py"
-    }
   ]
 }

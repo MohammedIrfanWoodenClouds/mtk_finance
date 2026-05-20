@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.user import User
@@ -74,21 +75,21 @@ def password_reset_request(
     request: Request,
     db: Session = Depends(get_db),
 ):
-    from app.core.config import get_settings
-
+    settings = get_settings()
     token = auth_service.request_password_reset(db, data.email)
     db.commit()
 
-    settings = get_settings()
-    internal_secret = request.headers.get("x-email-internal-secret", "")
-    allow_token = (
-        settings.EMAIL_INTERNAL_SECRET
-        and internal_secret == settings.EMAIL_INTERNAL_SECRET
-    )
-
     response: dict = {"message": "If the email exists, a reset link was sent"}
-    if token and allow_token:
+
+    # Token only for trusted server-side caller (Next.js route + EMAIL_INTERNAL_SECRET)
+    internal_secret = request.headers.get("x-email-internal-secret", "")
+    if (
+        token
+        and settings.EMAIL_INTERNAL_SECRET
+        and internal_secret == settings.EMAIL_INTERNAL_SECRET
+    ):
         response["reset_token"] = token
+
     return response
 
 

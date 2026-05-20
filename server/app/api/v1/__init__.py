@@ -1,7 +1,6 @@
 from fastapi import APIRouter
 
 from app.api.v1 import accounts, ai, auth, categories, transactions
-from app.api.v1.stubs import router as stubs_router
 
 api_router = APIRouter()
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
@@ -11,4 +10,3 @@ api_router.include_router(
     transactions.router, prefix="/transactions", tags=["transactions"]
 )
 api_router.include_router(ai.router, prefix="/ai", tags=["ai"])
-api_router.include_router(stubs_router)
