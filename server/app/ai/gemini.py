@@ -310,10 +310,12 @@ async def chat_with_gemini(
 def reset_ai_runtime_state() -> None:
     """Clear in-memory cooldowns (e.g. after reload or exhausted-key false positives)."""
     from app.ai.gemini_keys import reset_key_pool
+    from app.ai.rate_limit import reset_rate_limiters
 
     with _model_lock:
         _model_cooldowns.clear()
     reset_key_pool()
+    reset_rate_limiters()
 
 
 def get_pool_status() -> dict[str, int]:

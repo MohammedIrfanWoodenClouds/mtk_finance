@@ -106,6 +106,12 @@ _user_limiter: SlidingWindowLimiter | None = None
 _global_limiter: SlidingWindowLimiter | None = None
 
 
+def reset_rate_limiters() -> None:
+    global _user_limiter, _global_limiter
+    _user_limiter = None
+    _global_limiter = None
+
+
 def get_user_rate_limiter(
     rpm: int, rpd: int, min_interval_seconds: int
 ) -> SlidingWindowLimiter:
