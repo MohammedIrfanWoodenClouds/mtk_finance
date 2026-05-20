@@ -54,6 +54,9 @@ Default admin (seeded on API startup): `admin@mtkfin.com` / `pass123` — change
 | `SITE_URL` | Yes | `https://your-app.vercel.app` |
 | `NEXT_PUBLIC_API_URL` | Yes | Same as `SITE_URL` |
 | `BACKEND_CORS_ORIGINS` | Yes | Same as `SITE_URL` |
+
+**Install on Vercel:** use `npm install` only (not `pip install`). Python packages install automatically from `requirements.txt`.
+
 | `GEMINI_API_KEY` | For AI | Optional `GEMINI_API_KEY2` |
 | `SMTP_*` + `MAIL_TO` | For email | Gmail app password |
 | `EMAIL_INTERNAL_SECRET` | For email | Random secret (Next ↔ API) |
