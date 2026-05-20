@@ -88,5 +88,6 @@ class AccountSummaryResponse(BaseModel):
     net_worth: Decimal
     total_credit_limit: Decimal = Decimal("0")
     total_credit_outstanding: Decimal = Decimal("0")
+    total_credit_on_cards: Decimal = Decimal("0")
     available_credit: Decimal = Decimal("0")
     has_credit_limits: bool = False

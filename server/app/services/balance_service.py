@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.constants import is_asset_account, is_liability_account
 from app.models.account import Account
+from app.services.credit_card_math import amount_owed, available_credit, credit_balance
 
 
 def is_user_visible_account(account: Account) -> bool:
@@ -16,22 +17,24 @@ def is_user_visible_account(account: Account) -> bool:
 def _credit_card_stats(accounts: list[Account]) -> dict[str, Decimal]:
     total_limit = Decimal("0")
     total_outstanding = Decimal("0")
+    total_credit_on_cards = Decimal("0")
     has_limit = False
+    available = Decimal("0")
     for acc in accounts:
         if not is_user_visible_account(acc) or acc.account_type != "credit_card":
             continue
-        owed = acc.current_balance or Decimal("0")
-        total_outstanding += owed
-        if acc.credit_limit is not None and acc.credit_limit > 0:
-            total_limit += acc.credit_limit
+        bal = acc.current_balance or Decimal("0")
+        total_outstanding += amount_owed(bal)
+        total_credit_on_cards += credit_balance(bal)
+        lim = acc.credit_limit
+        if lim is not None and lim > 0:
+            total_limit += lim
             has_limit = True
-    # Negative outstanding = card credit; increases headroom beyond limit sum
-    available = (
-        total_limit - total_outstanding if has_limit else Decimal("0")
-    )
+            available += available_credit(lim, bal)
     return {
         "total_credit_limit": total_limit if has_limit else Decimal("0"),
         "total_credit_outstanding": total_outstanding,
+        "total_credit_on_cards": total_credit_on_cards,
         "available_credit": available,
         "has_credit_limits": has_limit,
     }

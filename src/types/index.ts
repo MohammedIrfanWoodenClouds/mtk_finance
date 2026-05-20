@@ -61,6 +61,7 @@ export interface AccountSummary {
   net_worth: string;
   total_credit_limit: string;
   total_credit_outstanding: string;
+  total_credit_on_cards: string;
   available_credit: string;
   has_credit_limits: boolean;
 }

@@ -1,3 +1,9 @@
+import {
+  creditCardAmountOwed,
+  creditCardAvailableFrom,
+  creditCardCreditBalance,
+  creditCardOverLimit,
+} from "@/lib/credit-card-math";
 import type { Account } from "@/types";
 
 export const LIABILITY_TYPES = new Set([
@@ -63,7 +69,7 @@ export function openingBalanceLabel(accountType: string): string {
 
 export function openingBalanceHint(accountType: string): string {
   if (accountType === "credit_card") {
-    return "Positive = amount owed. Negative = credit on the card (overpayment).";
+    return "Positive = owed. Negative = overpayment (credit); available stays at your limit.";
   }
   if (isLiabilityAccount(accountType)) {
     return "Positive = owed. Negative = lender owes you or overpaid balance.";
@@ -115,14 +121,27 @@ export function creditCardLimit(account: Account): number | null {
 export function creditCardAvailable(account: Account): number | null {
   const limit = creditCardLimit(account);
   if (limit == null) return null;
-  const owed = parseMoney(account.current_balance);
-  return limit - owed;
+  const balance = parseMoney(account.current_balance);
+  return creditCardAvailableFrom(limit, balance);
+}
+
+export function creditCardOverLimitAmount(account: Account): number | null {
+  const limit = creditCardLimit(account);
+  if (limit == null) return null;
+  const over = creditCardOverLimit(limit, parseMoney(account.current_balance));
+  return over > 0 ? over : null;
+}
+
+export function creditCardCreditOnAccount(account: Account): number | null {
+  if (account.account_type !== "credit_card") return null;
+  const credit = creditCardCreditBalance(parseMoney(account.current_balance));
+  return credit > 0 ? credit : null;
 }
 
 export function creditCardUtilization(account: Account): number | null {
   const limit = creditCardLimit(account);
   if (limit == null || limit <= 0) return null;
-  const owed = parseMoney(account.current_balance);
+  const owed = creditCardAmountOwed(parseMoney(account.current_balance));
   if (owed <= 0) return null;
   return Math.min(100, Math.round((owed / limit) * 100));
 }

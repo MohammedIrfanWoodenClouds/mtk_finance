@@ -13,7 +13,9 @@ import {
   accountTypeLabel,
   balanceCaption,
   creditCardAvailable,
+  creditCardCreditOnAccount,
   creditCardLimit,
+  creditCardOverLimitAmount,
   creditCardUtilization,
   institutionLabel,
   parseMoney,
@@ -103,7 +105,10 @@ export default function AccountsPage() {
     const owed = isLiabilityAccount(acc.account_type);
     const isCc = acc.account_type === "credit_card";
     const limit = creditCardLimit(acc);
+    const balanceNum = parseMoney(acc.current_balance);
     const available = creditCardAvailable(acc);
+    const cardCredit = creditCardCreditOnAccount(acc);
+    const overLimit = creditCardOverLimitAmount(acc);
     const utilization = creditCardUtilization(acc);
     const isEditing = editingId === acc.id;
 
@@ -143,7 +148,13 @@ export default function AccountsPage() {
                 </div>
                 <div>
                   <dt className="text-zinc-500">Available</dt>
-                  <dd className="font-medium tabular-nums text-emerald-700 dark:text-emerald-400">
+                  <dd
+                    className={`font-medium tabular-nums ${
+                      available != null && available < 0
+                        ? "text-red-700 dark:text-red-400"
+                        : "text-emerald-700 dark:text-emerald-400"
+                    }`}
+                  >
                     {available != null
                       ? formatCurrency(available)
                       : "Set limit"}
@@ -153,6 +164,19 @@ export default function AccountsPage() {
             ) : (
               <p className="mt-1 text-xs text-zinc-400">
                 {balanceCaption(acc)}
+              </p>
+            )}
+            {cardCredit != null && (
+              <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400">
+                Credit balance {formatCurrency(cardCredit)} — available stays at{" "}
+                {limit != null ? formatCurrency(limit) : "limit"}
+              </p>
+            )}
+            {overLimit != null && (
+              <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                Over limit by {formatCurrency(overLimit)} (owed{" "}
+                {formatCurrency(balanceNum)} vs limit{" "}
+                {limit != null ? formatCurrency(limit) : "—"})
               </p>
             )}
             {utilization != null && (
@@ -272,9 +296,15 @@ export default function AccountsPage() {
                   {formatCurrency(availableCredit)}
                 </p>
                 <p className="mt-0.5 text-xs text-zinc-500">
-                  Limit {formatCurrency(summary.total_credit_limit)} − owed{" "}
-                  {formatCurrency(summary.total_credit_outstanding)}
+                  Sum of per-card available (limit − owed; credit keeps full
+                  limit)
                 </p>
+                {parseFloat(summary.total_credit_on_cards || "0") > 0 && (
+                  <p className="mt-0.5 text-xs text-emerald-600">
+                    {formatCurrency(summary.total_credit_on_cards)} credit on
+                    cards
+                  </p>
+                )}
               </div>
             )}
           </div>

@@ -8,6 +8,7 @@ from app.constants import ACCOUNT_TYPE_LABELS, is_liability_account
 from app.models.category import Category
 from app.models.transaction import Transaction
 from app.services.balance_service import list_user_accounts, summarize_accounts
+from app.services.credit_card_math import amount_owed, available_credit
 
 
 def _decimal_str(v: Decimal | None) -> str:
@@ -65,12 +66,24 @@ def build_finance_context(db: Session, user_id: UUID) -> str:
             label = ACCOUNT_TYPE_LABELS.get(a.account_type, a.account_type)
             extra = ""
             if a.account_type == "credit_card" and a.credit_limit:
-                extra = f", limit {_decimal_str(a.credit_limit)}"
+                bal = a.current_balance or Decimal("0")
+                avail = available_credit(a.credit_limit, bal)
+                extra = (
+                    f", limit {_decimal_str(a.credit_limit)}, "
+                    f"available {_decimal_str(avail)}"
+                )
+                if bal < 0:
+                    extra += f", credit balance {_decimal_str(-bal)}"
+                elif amount_owed(bal) > 0:
+                    extra += f", owed {_decimal_str(amount_owed(bal))}"
             if a.institution_name:
                 extra += f", lender/issuer: {a.institution_name}"
-            lines.append(
-                f"- {a.name} ({label}): owed {_decimal_str(a.current_balance)}{extra}"
-            )
+            bal = a.current_balance or Decimal("0")
+            if a.account_type == "credit_card":
+                bal_part = f"balance {_decimal_str(bal)}"
+            else:
+                bal_part = f"owed {_decimal_str(bal)}"
+            lines.append(f"- {a.name} ({label}): {bal_part}{extra}")
 
     expense_by_cat: dict[str, Decimal] = {}
     income_total = Decimal("0")
