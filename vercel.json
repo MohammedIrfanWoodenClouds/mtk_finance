@@ -3,10 +3,15 @@
   "installCommand": "npm install && pip install -r requirements.txt",
   "buildCommand": "npm run build",
   "framework": "nextjs",
+  "build": {
+    "env": {
+      "PYTHONPATH": "server"
+    }
+  },
   "functions": {
     "server/app/api/index.py": {
-      "runtime": "python3.12",
-      "maxDuration": 30
+      "maxDuration": 30,
+      "excludeFiles": "{tests/**,__pycache__/**,.venv/**,**/*.pyc,alembic/**}"
     }
   },
   "rewrites": [
@@ -17,6 +22,6 @@
     {
       "source": "/api/health",
       "destination": "/server/app/api/index.py"
-    },
+    }
   ]
 }
