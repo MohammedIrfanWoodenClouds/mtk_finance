@@ -8,3 +8,4 @@ tests/
 htmlcov/
 .coverage
 node_modules/
+pyproject.toml
