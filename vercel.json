@@ -9,7 +9,7 @@
     }
   },
   "functions": {
-    "server/app/api/index.py": {
+    "api/**/*.py": {
       "maxDuration": 30,
       "excludeFiles": "{tests/**,__pycache__/**,.venv/**,**/*.pyc,alembic/**}"
     }
@@ -17,11 +17,11 @@
   "rewrites": [
     {
       "source": "/api/v1/(.*)",
-      "destination": "/server/app/api/index.py"
+      "destination": "/api/index"
     },
     {
       "source": "/api/health",
-      "destination": "/server/app/api/index.py"
+      "destination": "/api/index"
     }
   ]
 }
