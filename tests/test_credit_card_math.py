@@ -7,8 +7,11 @@ from app.services.credit_card_math import (
     credit_balance,
     credit_card_metrics,
     inputs_from_signed_balance,
+    is_over_limit,
     signed_balance_from_inputs,
+    signed_balance_from_limit_and_over,
     used_limit,
+    within_limit_used,
 )
 
 FIXTURES = Path(__file__).parent / "fixtures" / "credit_card_cases.json"
@@ -42,6 +45,12 @@ def test_signed_balance_from_inputs():
     assert signed_balance_from_inputs(Decimal("0"), Decimal("1300")) == Decimal("-1300")
 
 
+def test_signed_balance_from_limit_and_over():
+    assert signed_balance_from_limit_and_over(
+        Decimal("33000"), Decimal("1300"), Decimal("0")
+    ) == Decimal("34300")
+
+
 def test_inputs_from_signed_balance_roundtrip():
     balance = Decimal("-1300")
     used, credit = inputs_from_signed_balance(balance)
@@ -61,10 +70,19 @@ def test_credit_card_metrics_fixture_cases():
         assert m.available == Decimal(case["available"]), case["name"]
         if "over_limit" in case:
             assert m.over_limit == Decimal(case["over_limit"]), case["name"]
+            assert m.is_over_limit is True, case["name"]
+            assert within_limit_used(limit, balance) == limit, case["name"]
 
 
 def test_over_limit_metrics():
     m = credit_card_metrics(Decimal("33000"), Decimal("34300"))
     assert m.available == Decimal("-1300")
     assert m.over_limit == Decimal("1300")
+    assert m.within_limit_used == Decimal("33000")
+    assert m.is_over_limit is True
     assert m.utilization_pct == 104
+
+
+def test_is_over_limit():
+    assert is_over_limit(Decimal("33000"), Decimal("34300")) is True
+    assert is_over_limit(Decimal("33000"), Decimal("10000")) is False

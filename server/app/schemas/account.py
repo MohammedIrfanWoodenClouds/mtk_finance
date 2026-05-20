@@ -48,18 +48,28 @@ class AccountCreate(BaseModel):
 class CreditCardMetricsResponse(BaseModel):
     """Derived credit-card fields (issuer-style; not stored separately)."""
 
-    used_limit: Decimal = Field(ge=0, description="Portion of line in use")
+    used_limit: Decimal = Field(ge=0, description="Total balance owed on the line")
+    within_limit_used: Decimal = Field(
+        ge=0, description="Portion of used limit within the credit line"
+    )
     credit_on_card: Decimal = Field(ge=0, description="Overpayment on card")
     available: Decimal | None = Field(
         default=None,
-        description="Limit − used limit; null if no limit set",
+        description="Limit − used limit; negative when over limit",
     )
-    over_limit: Decimal = Field(ge=0, description="Used limit above credit line")
+    over_limit: Decimal = Field(
+        ge=0, description="Amount owed beyond the credit line"
+    )
+    is_over_limit: bool = Field(
+        default=False, description="True when used limit exceeds credit limit"
+    )
     utilization_pct: int | None = Field(
-        default=None, ge=0, le=100, description="Used / limit × 100"
+        default=None,
+        ge=0,
+        description="Used / limit × 100; may exceed 100 when over limit",
     )
     signed_balance: Decimal = Field(
-        description="Ledger balance (+ used, − credit on card)"
+        description="Ledger balance (+ owed, − credit on card)"
     )
 
 

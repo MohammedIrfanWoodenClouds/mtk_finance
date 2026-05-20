@@ -68,7 +68,10 @@ export function openingBalanceLabel(accountType: string): string {
 
 export function openingBalanceHint(accountType: string): string {
   if (accountType === "credit_card") {
-    return "How much of your limit is used right now. Available = limit − used limit.";
+    return (
+      "Balance owed = charges on the line. Over-limit usage is tracked separately " +
+      "when owed exceeds your limit (available credit goes negative)."
+    );
   }
   if (isLiabilityAccount(accountType)) {
     return "Positive = owed. Negative = lender owes you or overpaid balance.";

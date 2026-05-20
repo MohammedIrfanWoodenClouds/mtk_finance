@@ -21,9 +21,11 @@ def metrics_for_account(account: Account) -> CreditCardMetricsResponse | None:
     m = credit_card_metrics(_effective_limit(account), balance)
     return CreditCardMetricsResponse(
         used_limit=m.used_limit,
+        within_limit_used=m.within_limit_used,
         credit_on_card=m.credit_on_card,
         available=m.available,
         over_limit=m.over_limit,
+        is_over_limit=m.is_over_limit,
         utilization_pct=m.utilization_pct,
         signed_balance=m.signed_balance,
     )

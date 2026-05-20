@@ -1,29 +1,29 @@
 /**
  * Credit card ledger uses a signed balance on the account:
- *   balance ≥ 0 → used limit (amount charged against the line)
+ *   balance ≥ 0 → balance owed (used limit)
  *   balance < 0 → credit on card (overpayment)
  *
- * Issuer-style formulas (see Capital One / standard available credit):
+ * Issuer-style formulas:
  *   used limit = max(0, balance)
- *   available credit = limit − used limit (full limit when credit on card)
+ *   within limit = min(used limit, limit)
+ *   over limit = max(0, used limit − limit)
+ *   available credit = limit − used limit (negative when over limit)
  */
 
-/** Amount of the credit line currently used (≥ 0). */
 export function creditCardUsedLimit(balance: number): number {
   return Math.max(0, balance);
 }
 
-/** @deprecated Alias */
-export function creditCardAmountOwed(balance: number): number {
-  return creditCardUsedLimit(balance);
-}
-
-/** Overpayment sitting on the card (≥ 0). */
 export function creditCardCreditBalance(balance: number): number {
   return Math.max(0, -balance);
 }
 
-/** Available headroom: limit − used limit. */
+export function creditCardWithinLimitUsed(limit: number, balance: number): number {
+  const used = creditCardUsedLimit(balance);
+  if (limit <= 0) return used;
+  return Math.min(used, limit);
+}
+
 export function creditCardAvailableFrom(limit: number, balance: number): number {
   if (limit <= 0) return 0;
   if (balance < 0) return limit;
@@ -36,7 +36,18 @@ export function creditCardOverLimit(limit: number, balance: number): number {
   return used - limit;
 }
 
-/** Convert UI fields to ledger signed balance. */
+export function creditCardIsOverLimit(limit: number | null, balance: number): boolean {
+  if (limit == null || limit <= 0) return false;
+  return creditCardUsedLimit(balance) > limit;
+}
+
+export function creditCardUtilizationPct(limit: number, balance: number): number | null {
+  if (limit <= 0) return null;
+  const used = creditCardUsedLimit(balance);
+  if (used <= 0) return 0;
+  return Math.round((used / limit) * 100);
+}
+
 export function signedBalanceFromCardInputs(
   usedLimit: number,
   creditOnCard: number
@@ -45,7 +56,15 @@ export function signedBalanceFromCardInputs(
   return Math.max(0, usedLimit);
 }
 
-/** Split ledger balance into used limit and credit for forms. */
+export function signedBalanceFromLimitAndOver(
+  limit: number,
+  overLimit: number,
+  creditOnCard: number
+): number {
+  const used = limit > 0 ? limit + Math.max(0, overLimit) : Math.max(0, overLimit);
+  return signedBalanceFromCardInputs(used, creditOnCard);
+}
+
 export function cardInputsFromSignedBalance(balance: number): {
   usedLimit: number;
   creditOnCard: number;
@@ -59,9 +78,11 @@ export function cardInputsFromSignedBalance(balance: number): {
 export type CreditCardDisplay = {
   limit: number | null;
   usedLimit: number;
+  withinLimitUsed: number;
   available: number | null;
   creditOnCard: number;
   overLimit: number;
+  isOverLimit: boolean;
   utilizationPct: number | null;
   signedBalance: number;
 };
@@ -72,23 +93,23 @@ export function creditCardDisplayFromAccount(
 ): CreditCardDisplay {
   const usedLimit = creditCardUsedLimit(signedBalance);
   const creditOnCard = creditCardCreditBalance(signedBalance);
+  const lim = limit != null && limit > 0 ? limit : null;
   const available =
-    limit != null && limit > 0
-      ? creditCardAvailableFrom(limit, signedBalance)
-      : null;
-  const overLimit =
-    limit != null && limit > 0 ? creditCardOverLimit(limit, signedBalance) : 0;
+    lim != null ? creditCardAvailableFrom(lim, signedBalance) : null;
+  const overLimit = lim != null ? creditCardOverLimit(lim, signedBalance) : 0;
+  const withinLimitUsed =
+    lim != null ? creditCardWithinLimitUsed(lim, signedBalance) : usedLimit;
   const utilizationPct =
-    limit != null && limit > 0 && usedLimit > 0
-      ? Math.round((usedLimit / limit) * 100)
-      : null;
+    lim != null ? creditCardUtilizationPct(lim, signedBalance) : null;
 
   return {
-    limit,
+    limit: lim,
     usedLimit,
+    withinLimitUsed,
     available,
     creditOnCard,
     overLimit,
+    isOverLimit: lim != null && overLimit > 0,
     utilizationPct,
     signedBalance,
   };
@@ -96,9 +117,11 @@ export function creditCardDisplayFromAccount(
 
 export type CreditCardMetricsFields = {
   used_limit: string;
+  within_limit_used: string;
   credit_on_card: string;
   available: string | null;
   over_limit: string;
+  is_over_limit: boolean;
   utilization_pct: number | null;
   signed_balance: string;
 };
@@ -109,7 +132,6 @@ function parseApiMoney(value: string | null | undefined): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-/** Prefer server-computed metrics when present. */
 export function resolveCreditCardDisplay(account: {
   account_type: string;
   credit_limit: string | null;
@@ -130,10 +152,12 @@ export function resolveCreditCardDisplay(account: {
     return {
       limit,
       usedLimit: parseApiMoney(m.used_limit),
+      withinLimitUsed: parseApiMoney(m.within_limit_used),
       available:
         m.available != null ? parseApiMoney(m.available) : null,
       creditOnCard: parseApiMoney(m.credit_on_card),
       overLimit: parseApiMoney(m.over_limit),
+      isOverLimit: m.is_over_limit,
       utilizationPct: m.utilization_pct,
       signedBalance: parseApiMoney(m.signed_balance),
     };
@@ -157,4 +181,10 @@ export function creditCardDisplay(account: {
       : null;
   const signedBalance = parseFloat(account.current_balance) || 0;
   return creditCardDisplayFromAccount(limit, signedBalance);
+}
+
+/** Bar width for utilization UI (caps at 100% visually when over limit). */
+export function utilizationBarWidthPct(utilizationPct: number | null): number {
+  if (utilizationPct == null) return 0;
+  return Math.min(100, utilizationPct);
 }

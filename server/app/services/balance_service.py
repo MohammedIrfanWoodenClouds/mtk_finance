@@ -41,9 +41,7 @@ def _credit_card_stats(accounts: list[Account]) -> dict[str, Decimal | int | boo
 
     portfolio_util: int | None = None
     if has_limit and total_limit > 0 and total_outstanding > 0:
-        portfolio_util = int(
-            min(100, round((total_outstanding / total_limit) * 100))
-        )
+        portfolio_util = int(round((total_outstanding / total_limit) * 100))
 
     return {
         "total_credit_limit": total_limit if has_limit else Decimal("0"),

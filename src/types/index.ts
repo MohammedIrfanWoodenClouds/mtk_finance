@@ -13,9 +13,11 @@ export interface User {
 /** Server-derived credit card snapshot (issuer-style). */
 export interface CreditCardMetrics {
   used_limit: string;
+  within_limit_used: string;
   credit_on_card: string;
   available: string | null;
   over_limit: string;
+  is_over_limit: boolean;
   utilization_pct: number | null;
   signed_balance: string;
 }

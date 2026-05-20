@@ -20,8 +20,10 @@
     "limit": "33000",
     "balance": "34300",
     "used_limit": "34300",
+    "within_limit_used": "33000",
     "credit_on_card": "0",
     "available": "-1300",
-    "over_limit": "1300"
+    "over_limit": "1300",
+    "is_over_limit": true
   }
 ]

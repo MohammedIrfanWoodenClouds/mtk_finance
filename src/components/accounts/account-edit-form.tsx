@@ -2,6 +2,11 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import {
+  CreditCardMetricsPanel,
+  syncOverFromUsed,
+  syncUsedFromOver,
+} from "@/components/accounts/credit-card-metrics-panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,8 +19,7 @@ import {
   parseMoney,
   signedBalanceFromCardInputs,
 } from "@/lib/account-types";
-import { creditCardAvailableFrom } from "@/lib/credit-card-math";
-import { formatCurrency } from "@/lib/utils";
+import { signedBalanceFromLimitAndOver } from "@/lib/credit-card-math";
 import { updateAccount } from "@/modules/accounts/api";
 import type { Account } from "@/types";
 
@@ -31,13 +35,49 @@ export function AccountEditForm({ account, onDone }: AccountEditFormProps) {
   const initial = cardInputsFromSignedBalance(
     parseMoney(account.current_balance)
   );
+  const initialLimit = account.credit_limit
+    ? parseFloat(account.credit_limit)
+    : 0;
 
   const [name, setName] = useState(account.name);
   const [institution, setInstitution] = useState(account.institution_name ?? "");
   const [creditLimit, setCreditLimit] = useState(account.credit_limit ?? "");
   const [usedLimit, setUsedLimit] = useState(String(initial.usedLimit));
+  const [overLimitAmount, setOverLimitAmount] = useState(
+    initialLimit > 0
+      ? String(syncOverFromUsed(initialLimit, initial.usedLimit, initial.creditOnCard))
+      : "0"
+  );
   const [creditOnCard, setCreditOnCard] = useState(String(initial.creditOnCard));
   const [balance, setBalance] = useState(account.current_balance);
+
+  const limitNum = creditLimit !== "" ? parseFloat(creditLimit) : null;
+  const creditNum = parseFloat(creditOnCard) || 0;
+
+  function handleUsedLimitChange(value: string) {
+    setUsedLimit(value);
+    if (limitNum != null && limitNum > 0 && creditNum <= 0) {
+      setOverLimitAmount(
+        String(syncOverFromUsed(limitNum, parseFloat(value) || 0, 0))
+      );
+    }
+  }
+
+  function handleOverLimitChange(value: string) {
+    setOverLimitAmount(value);
+    if (limitNum != null && limitNum > 0 && creditNum <= 0) {
+      setUsedLimit(String(syncUsedFromOver(limitNum, parseFloat(value) || 0, 0)));
+    }
+  }
+
+  function handleCreditLimitChange(value: string) {
+    setCreditLimit(value);
+    const lim = parseFloat(value) || 0;
+    if (lim > 0 && creditNum <= 0) {
+      const over = parseFloat(overLimitAmount) || 0;
+      setUsedLimit(String(syncUsedFromOver(lim, over, 0)));
+    }
+  }
 
   const saveMut = useMutation({
     mutationFn: () => {
@@ -50,10 +90,16 @@ export function AccountEditForm({ account, onDone }: AccountEditFormProps) {
       }
 
       let nextSigned: number;
-      if (isCc) {
+      if (isCc && limitNum != null && limitNum > 0) {
+        nextSigned = signedBalanceFromLimitAndOver(
+          limitNum,
+          parseFloat(overLimitAmount) || 0,
+          creditNum
+        );
+      } else if (isCc) {
         nextSigned = signedBalanceFromCardInputs(
           parseFloat(usedLimit) || 0,
-          parseFloat(creditOnCard) || 0
+          creditNum
         );
       } else {
         nextSigned = parseFloat(balance);
@@ -77,23 +123,7 @@ export function AccountEditForm({ account, onDone }: AccountEditFormProps) {
     saveMut.mutate();
   }
 
-  const limitNum = creditLimit !== "" ? parseFloat(creditLimit) : null;
   const usedNum = parseFloat(usedLimit) || 0;
-  const creditNum = parseFloat(creditOnCard) || 0;
-  const overLimit =
-    isCc &&
-    limitNum != null &&
-    limitNum > 0 &&
-    creditNum <= 0 &&
-    usedNum > limitNum;
-
-  const previewAvailable =
-    isCc && limitNum != null && limitNum > 0
-      ? creditCardAvailableFrom(
-          limitNum,
-          signedBalanceFromCardInputs(usedNum, creditNum)
-        )
-      : null;
 
   return (
     <form onSubmit={handleSubmit} className="mt-4 space-y-3 border-t pt-4">
@@ -122,25 +152,41 @@ export function AccountEditForm({ account, onDone }: AccountEditFormProps) {
                 step="0.01"
                 min="0.01"
                 value={creditLimit}
-                onChange={(e) => setCreditLimit(e.target.value)}
-                placeholder="Total line on card"
+                onChange={(e) => handleCreditLimitChange(e.target.value)}
+                placeholder="Issuer line limit"
               />
             </div>
             <div>
-              <Label>Used limit</Label>
+              <Label>Balance owed (total)</Label>
               <Input
                 type="number"
                 step="0.01"
                 min="0"
                 value={usedLimit}
-                onChange={(e) => setUsedLimit(e.target.value)}
+                onChange={(e) => handleUsedLimitChange(e.target.value)}
                 disabled={creditNum > 0}
               />
               <p className="mt-1 text-xs text-zinc-500">
-                {openingBalanceHint("credit_card")}
+                Total on the card = within limit + over limit.
               </p>
             </div>
           </div>
+          {limitNum != null && limitNum > 0 && creditNum <= 0 && (
+            <div>
+              <Label>Over-limit usage</Label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                value={overLimitAmount}
+                onChange={(e) => handleOverLimitChange(e.target.value)}
+              />
+              <p className="mt-1 text-xs text-zinc-500">
+                Amount spent beyond your credit limit (issuer may still post
+                these charges). Adjusting this updates balance owed.
+              </p>
+            </div>
+          )}
           <div>
             <Label>Credit on card (overpayment)</Label>
             <Input
@@ -152,22 +198,15 @@ export function AccountEditForm({ account, onDone }: AccountEditFormProps) {
               placeholder="0 if none"
             />
             <p className="mt-1 text-xs text-zinc-500">
-              Optional. If set, used limit is treated as 0 and available stays
-              at your full limit.
+              Not the same as over-limit. Overpayment reduces what you owe.
             </p>
           </div>
-          {previewAvailable != null && (
-            <p
-              className={`text-sm ${
-                previewAvailable < 0
-                  ? "text-red-600"
-                  : "text-emerald-700 dark:text-emerald-400"
-              }`}
-            >
-              Available credit: {formatCurrency(previewAvailable)} (limit − used
-              limit)
-              {previewAvailable < 0 && " — over limit"}
-            </p>
+          {limitNum != null && limitNum > 0 && (
+            <CreditCardMetricsPanel
+              limit={limitNum}
+              usedLimit={usedNum}
+              creditOnCard={creditNum}
+            />
           )}
         </>
       )}
@@ -186,23 +225,13 @@ export function AccountEditForm({ account, onDone }: AccountEditFormProps) {
           </p>
         </div>
       )}
-      {overLimit && (
-        <p className="text-sm text-amber-700 dark:text-amber-400">
-          Over limit — available credit is negative. You can still save to record
-          issuer over-limit balances.
-        </p>
-      )}
       {saveMut.error && (
         <p className="text-sm text-red-600">
           {(saveMut.error as Error).message}
         </p>
       )}
       <div className="flex gap-2">
-        <Button
-          type="submit"
-          size="sm"
-          disabled={saveMut.isPending}
-        >
+        <Button type="submit" size="sm" disabled={saveMut.isPending}>
           {saveMut.isPending ? "Saving…" : "Save changes"}
         </Button>
         <Button type="button" size="sm" variant="outline" onClick={onDone}>
