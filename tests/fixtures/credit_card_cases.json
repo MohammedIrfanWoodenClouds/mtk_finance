@@ -1,0 +1,27 @@
+[
+  {
+    "name": "credit_on_card_full_limit_available",
+    "limit": "33000",
+    "balance": "-1300",
+    "used_limit": "0",
+    "credit_on_card": "1300",
+    "available": "33000"
+  },
+  {
+    "name": "normal_utilization",
+    "limit": "33000",
+    "balance": "10000",
+    "used_limit": "10000",
+    "credit_on_card": "0",
+    "available": "23000"
+  },
+  {
+    "name": "over_limit_negative_available",
+    "limit": "33000",
+    "balance": "34300",
+    "used_limit": "34300",
+    "credit_on_card": "0",
+    "available": "-1300",
+    "over_limit": "1300"
+  }
+]

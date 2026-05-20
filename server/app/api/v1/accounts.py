@@ -14,6 +14,7 @@ from app.schemas.account import (
 )
 from app.services import account_service
 from app.services.balance_service import list_user_accounts, summarize_accounts
+from app.services.credit_card_presenter import account_response
 
 router = APIRouter()
 
@@ -34,7 +35,8 @@ def list_accounts(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    return account_service.list_accounts(db, user.id, include_inactive)
+    accounts = account_service.list_accounts(db, user.id, include_inactive)
+    return [account_response(a) for a in accounts]
 
 
 @router.post("", response_model=AccountResponse, status_code=201)
@@ -46,7 +48,7 @@ def create_account(
     account = account_service.create_account(db, user.id, data)
     db.commit()
     db.refresh(account)
-    return account
+    return account_response(account)
 
 
 @router.get("/{account_id}", response_model=AccountResponse)
@@ -76,7 +78,7 @@ def update_account(
     account = account_service.update_account(db, user.id, account, data)
     db.commit()
     db.refresh(account)
-    return account
+    return account_response(account)
 
 
 @router.delete("/{account_id}", status_code=204)

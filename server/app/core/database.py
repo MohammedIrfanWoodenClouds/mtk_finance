@@ -2,17 +2,21 @@ from collections.abc import Generator
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
+from sqlalchemy.pool import NullPool
 
 from app.core.config import get_settings
 
 settings = get_settings()
 
-engine = create_engine(
-    settings.sqlalchemy_database_uri,
-    pool_pre_ping=True,
-    pool_size=5,
-    max_overflow=10,
-)
+_engine_kwargs: dict = {"pool_pre_ping": True}
+if settings.VERCEL_ENV:
+    # Serverless: one connection per invocation, no pooled idle connections
+    _engine_kwargs["poolclass"] = NullPool
+else:
+    _engine_kwargs["pool_size"] = 5
+    _engine_kwargs["max_overflow"] = 10
+
+engine = create_engine(settings.sqlalchemy_database_uri, **_engine_kwargs)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

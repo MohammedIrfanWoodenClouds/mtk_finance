@@ -32,7 +32,7 @@ export function describeTransfer(
   if (!fromLiab && toLiab) {
     if (toType === "credit_card") {
       scenario =
-        "Credit card payment: cash leaves your bank and reduces the card balance owed.";
+        "Credit card payment: cash leaves your bank and reduces used limit on the card.";
     } else {
       scenario =
         "Loan payment: cash leaves your asset account and reduces what you owe.";
@@ -70,8 +70,15 @@ export function buildTransferPreview(
     lines.push(`${from.name}: −${totalFrom.toFixed(2)} from source`);
   }
   if (to && principal > 0) {
-    const label = isLiabilityAccount(to.account_type) ? "owed" : "balance";
-    lines.push(`${to.name}: −${principal.toFixed(2)} on ${label}`);
+    if (to.account_type === "credit_card") {
+      lines.push(
+        `${to.name}: payment ${principal.toFixed(2)} (reduces used limit)`
+      );
+    } else if (isLiabilityAccount(to.account_type)) {
+      lines.push(`${to.name}: payment ${principal.toFixed(2)} (reduces owed)`);
+    } else {
+      lines.push(`${to.name}: +${principal.toFixed(2)} balance`);
+    }
   }
   if (fee > 0) {
     lines.push(`Fee: ${fee.toFixed(2)} (expense)`);

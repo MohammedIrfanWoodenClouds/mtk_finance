@@ -13,7 +13,8 @@
     "db:migrate": "cross-env PYTHONPATH=server .venv/Scripts/python -m alembic upgrade head",
     "db:revision": "cross-env PYTHONPATH=server .venv/Scripts/python -m alembic revision --autogenerate -m",
     "db:check": "cross-env PYTHONPATH=server .venv/Scripts/python scripts/db_check.py",
-    "report:daily": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/send-daily-report.ps1"
+    "report:daily": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/send-daily-report.ps1",
+    "test:cc": "cross-env PYTHONPATH=server .venv/Scripts/python -m pytest tests/test_credit_card_math.py -q"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",

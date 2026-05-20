@@ -12,8 +12,6 @@ import {
   ACCOUNT_TYPE_OPTIONS,
   accountTypeLabel,
   balanceCaption,
-  creditCardDisplayFromAccount,
-  creditCardLimit,
   institutionLabel,
   isLiabilityAccount,
   openingBalanceHint,
@@ -21,6 +19,10 @@ import {
   partitionAccounts,
   signedBalanceFromCardInputs,
 } from "@/lib/account-types";
+import {
+  creditCardAvailableFrom,
+  resolveCreditCardDisplay,
+} from "@/lib/credit-card-math";
 import { formatCurrency } from "@/lib/utils";
 import {
   createAccount,
@@ -133,18 +135,16 @@ export default function AccountsPage() {
     accountType === "credit_card" &&
     creditLimit !== "" &&
     parseFloat(creditLimit) > 0
-      ? Math.max(0, parseFloat(creditLimit) - (creditNum > 0 ? 0 : usedNum))
+      ? creditCardAvailableFrom(
+          parseFloat(creditLimit),
+          signedBalanceFromCardInputs(usedNum, creditNum)
+        )
       : null;
 
   function renderAccountCard(acc: Account) {
     const owed = isLiabilityAccount(acc.account_type);
     const isCc = acc.account_type === "credit_card";
-    const cc = isCc
-      ? creditCardDisplayFromAccount(
-          creditCardLimit(acc),
-          parseFloat(acc.current_balance) || 0
-        )
-      : null;
+    const cc = isCc ? resolveCreditCardDisplay(acc) : null;
     const isEditing = editingId === acc.id;
 
     return (
@@ -348,6 +348,18 @@ export default function AccountsPage() {
                     cards
                   </p>
                 )}
+                {summary.portfolio_utilization_pct != null && (
+                  <p className="mt-0.5 text-xs text-zinc-500">
+                    Portfolio utilization {summary.portfolio_utilization_pct}%
+                    {parseFloat(summary.total_over_limit || "0") > 0 && (
+                      <span className="text-red-600">
+                        {" "}
+                        · {formatCurrency(summary.total_over_limit ?? "0")} over
+                        limit
+                      </span>
+                    )}
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -441,8 +453,15 @@ export default function AccountsPage() {
                   />
                 </div>
                 {createPreviewAvailable != null && (
-                  <p className="text-sm text-emerald-700 dark:text-emerald-400">
+                  <p
+                    className={`text-sm ${
+                      createPreviewAvailable < 0
+                        ? "text-red-600"
+                        : "text-emerald-700 dark:text-emerald-400"
+                    }`}
+                  >
                     Available credit: {formatCurrency(createPreviewAvailable)}
+                    {createPreviewAvailable < 0 && " (over limit)"}
                   </p>
                 )}
               </>

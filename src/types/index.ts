@@ -10,6 +10,16 @@ export interface User {
   full_name: string;
 }
 
+/** Server-derived credit card snapshot (issuer-style). */
+export interface CreditCardMetrics {
+  used_limit: string;
+  credit_on_card: string;
+  available: string | null;
+  over_limit: string;
+  utilization_pct: number | null;
+  signed_balance: string;
+}
+
 export interface Account {
   id: string;
   user_id: string;
@@ -19,6 +29,7 @@ export interface Account {
   current_balance: string;
   institution_name: string | null;
   credit_limit: string | null;
+  credit_card?: CreditCardMetrics | null;
   color: string | null;
   icon: string | null;
   is_active: boolean;
@@ -63,6 +74,8 @@ export interface AccountSummary {
   total_credit_outstanding: string;
   total_credit_on_cards: string;
   available_credit: string;
+  total_over_limit?: string;
+  portfolio_utilization_pct?: number | null;
   has_credit_limits: boolean;
 }
 

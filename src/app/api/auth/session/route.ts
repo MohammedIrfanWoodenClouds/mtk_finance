@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
-const API_URL = process.env.API_URL || "http://127.0.0.1:8000";
+import { getServerApiBaseUrl } from "@/lib/server-api-url";
 const REFRESH_COOKIE = "mtk_refresh_token";
 
 export async function POST() {
@@ -13,7 +13,7 @@ export async function POST() {
   }
 
   try {
-    const res = await fetch(`${API_URL}/api/v1/auth/refresh`, {
+    const res = await fetch(`${getServerApiBaseUrl()}/api/v1/auth/refresh`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refresh_token: refreshToken }),
@@ -57,7 +57,7 @@ export async function DELETE() {
 
   if (refreshToken) {
     try {
-      await fetch(`${API_URL}/api/v1/auth/logout`, {
+      await fetch(`${getServerApiBaseUrl()}/api/v1/auth/logout`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ refresh_token: refreshToken }),

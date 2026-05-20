@@ -16,7 +16,8 @@ class AccountCreate(BaseModel):
         default=Decimal("0"),
         description=(
             "Assets: balance (negative = overdraft). "
-            "Liabilities: owed (negative = credit/overpayment on card)."
+            "Credit card: signed balance (+ used limit, − credit on card). "
+            "Other liabilities: amount owed (+ owed, − credit)."
         ),
     )
     institution_name: str | None = Field(
@@ -44,13 +45,34 @@ class AccountCreate(BaseModel):
         return v
 
 
+class CreditCardMetricsResponse(BaseModel):
+    """Derived credit-card fields (issuer-style; not stored separately)."""
+
+    used_limit: Decimal = Field(ge=0, description="Portion of line in use")
+    credit_on_card: Decimal = Field(ge=0, description="Overpayment on card")
+    available: Decimal | None = Field(
+        default=None,
+        description="Limit − used limit; null if no limit set",
+    )
+    over_limit: Decimal = Field(ge=0, description="Used limit above credit line")
+    utilization_pct: int | None = Field(
+        default=None, ge=0, le=100, description="Used / limit × 100"
+    )
+    signed_balance: Decimal = Field(
+        description="Ledger balance (+ used, − credit on card)"
+    )
+
+
 class AccountUpdate(BaseModel):
     name: str | None = None
     institution_name: str | None = None
     credit_limit: Decimal | None = None
     current_outstanding: Decimal | None = Field(
         default=None,
-        description="Account balance; negative allowed (overdraft / card credit)",
+        description=(
+            "Signed ledger balance. Credit cards: positive = used limit, "
+            "negative = credit on card."
+        ),
     )
     color: str | None = None
     icon: str | None = None
@@ -73,6 +95,7 @@ class AccountResponse(BaseModel):
     current_balance: Decimal
     institution_name: str | None
     credit_limit: Decimal | None
+    credit_card: CreditCardMetricsResponse | None = None
     color: str | None
     icon: str | None
     is_active: bool
@@ -90,4 +113,6 @@ class AccountSummaryResponse(BaseModel):
     total_credit_outstanding: Decimal = Decimal("0")
     total_credit_on_cards: Decimal = Decimal("0")
     available_credit: Decimal = Decimal("0")
+    total_over_limit: Decimal = Decimal("0")
+    portfolio_utilization_pct: int | None = None
     has_credit_limits: bool = False

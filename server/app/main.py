@@ -34,7 +34,9 @@ async def lifespan(app: FastAPI):
         db.commit()
     except Exception:
         db.rollback()
-        raise
+        logger.exception(
+            "Startup seed failed — check DATABASE_URL / DIRECT_URL on Vercel"
+        )
     finally:
         db.close()
     yield

@@ -94,6 +94,54 @@ export function creditCardDisplayFromAccount(
   };
 }
 
+export type CreditCardMetricsFields = {
+  used_limit: string;
+  credit_on_card: string;
+  available: string | null;
+  over_limit: string;
+  utilization_pct: number | null;
+  signed_balance: string;
+};
+
+function parseApiMoney(value: string | null | undefined): number {
+  if (value == null || value === "") return 0;
+  const n = parseFloat(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/** Prefer server-computed metrics when present. */
+export function resolveCreditCardDisplay(account: {
+  account_type: string;
+  credit_limit: string | null;
+  current_balance: string;
+  credit_card?: CreditCardMetricsFields | null;
+}): CreditCardDisplay | null {
+  if (account.account_type !== "credit_card") return null;
+
+  if (account.credit_card) {
+    const m = account.credit_card;
+    const limitRaw = account.credit_limit
+      ? parseFloat(account.credit_limit)
+      : null;
+    const limit =
+      limitRaw != null && limitRaw > 0 && Number.isFinite(limitRaw)
+        ? limitRaw
+        : null;
+    return {
+      limit,
+      usedLimit: parseApiMoney(m.used_limit),
+      available:
+        m.available != null ? parseApiMoney(m.available) : null,
+      creditOnCard: parseApiMoney(m.credit_on_card),
+      overLimit: parseApiMoney(m.over_limit),
+      utilizationPct: m.utilization_pct,
+      signedBalance: parseApiMoney(m.signed_balance),
+    };
+  }
+
+  return creditCardDisplay(account);
+}
+
 export function creditCardDisplay(account: {
   account_type: string;
   credit_limit: string | null;

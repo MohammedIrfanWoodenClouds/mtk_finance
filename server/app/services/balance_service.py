@@ -5,7 +5,12 @@ from sqlalchemy.orm import Session
 
 from app.constants import is_asset_account, is_liability_account
 from app.models.account import Account
-from app.services.credit_card_math import amount_owed, available_credit, credit_balance
+from app.services.credit_card_math import (
+    amount_owed,
+    available_credit,
+    credit_balance,
+    over_limit_amount,
+)
 
 
 def is_user_visible_account(account: Account) -> bool:
@@ -14,10 +19,11 @@ def is_user_visible_account(account: Account) -> bool:
     )
 
 
-def _credit_card_stats(accounts: list[Account]) -> dict[str, Decimal]:
+def _credit_card_stats(accounts: list[Account]) -> dict[str, Decimal | int | bool | None]:
     total_limit = Decimal("0")
     total_outstanding = Decimal("0")
     total_credit_on_cards = Decimal("0")
+    total_over_limit = Decimal("0")
     has_limit = False
     available = Decimal("0")
     for acc in accounts:
@@ -31,11 +37,21 @@ def _credit_card_stats(accounts: list[Account]) -> dict[str, Decimal]:
             total_limit += lim
             has_limit = True
             available += available_credit(lim, bal)
+            total_over_limit += over_limit_amount(lim, bal)
+
+    portfolio_util: int | None = None
+    if has_limit and total_limit > 0 and total_outstanding > 0:
+        portfolio_util = int(
+            min(100, round((total_outstanding / total_limit) * 100))
+        )
+
     return {
         "total_credit_limit": total_limit if has_limit else Decimal("0"),
         "total_credit_outstanding": total_outstanding,
         "total_credit_on_cards": total_credit_on_cards,
         "available_credit": available,
+        "total_over_limit": total_over_limit,
+        "portfolio_utilization_pct": portfolio_util,
         "has_credit_limits": has_limit,
     }
 

@@ -54,6 +54,7 @@ Default admin (seeded on API startup): `admin@mtkfin.com` / `pass123` — change
 | `SITE_URL` | Yes | `https://your-app.vercel.app` |
 | `NEXT_PUBLIC_API_URL` | Yes | Same as `SITE_URL` |
 | `BACKEND_CORS_ORIGINS` | Yes | Same as `SITE_URL` |
+| `API_URL` | No | Local only (`http://127.0.0.1:8000`). On Vercel, `/api/v1` is rewritten to Python automatically. |
 
 **Install on Vercel:** use `npm install` only (not `pip install`). Python packages install automatically from `requirements.txt`.
 

@@ -85,7 +85,8 @@ export default function ReportsPage() {
       <div>
         <h1 className="text-2xl font-bold">Reports</h1>
         <p className="mt-1 text-sm text-zinc-500">
-          Generate a PDF with current balances, transactions for the period, and
+          Generate a PDF with account totals (used limit for cards), transactions
+          for the period, and
           AI recommendations. Download or send to your email.
         </p>
       </div>

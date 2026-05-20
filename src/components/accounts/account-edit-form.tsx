@@ -14,6 +14,7 @@ import {
   parseMoney,
   signedBalanceFromCardInputs,
 } from "@/lib/account-types";
+import { creditCardAvailableFrom } from "@/lib/credit-card-math";
 import { formatCurrency } from "@/lib/utils";
 import { updateAccount } from "@/modules/accounts/api";
 import type { Account } from "@/types";
@@ -88,7 +89,10 @@ export function AccountEditForm({ account, onDone }: AccountEditFormProps) {
 
   const previewAvailable =
     isCc && limitNum != null && limitNum > 0
-      ? Math.max(0, limitNum - (creditNum > 0 ? 0 : usedNum))
+      ? creditCardAvailableFrom(
+          limitNum,
+          signedBalanceFromCardInputs(usedNum, creditNum)
+        )
       : null;
 
   return (
@@ -153,9 +157,16 @@ export function AccountEditForm({ account, onDone }: AccountEditFormProps) {
             </p>
           </div>
           {previewAvailable != null && (
-            <p className="text-sm text-emerald-700 dark:text-emerald-400">
+            <p
+              className={`text-sm ${
+                previewAvailable < 0
+                  ? "text-red-600"
+                  : "text-emerald-700 dark:text-emerald-400"
+              }`}
+            >
               Available credit: {formatCurrency(previewAvailable)} (limit − used
               limit)
+              {previewAvailable < 0 && " — over limit"}
             </p>
           )}
         </>

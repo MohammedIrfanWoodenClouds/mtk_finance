@@ -7,10 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import {
   accountTypeLabel,
-  creditCardDisplayFromAccount,
-  creditCardLimit,
-  parseMoney,
   partitionAccounts,
+  resolveCreditCardDisplay,
 } from "@/lib/account-types";
 import { formatCurrency } from "@/lib/utils";
 import { fetchAccountSummary, listAccounts } from "@/modules/accounts/api";
@@ -158,12 +156,7 @@ export default function DashboardPage() {
             ))}
             {liabilities.map((a) => {
               const isCc = a.account_type === "credit_card";
-              const cc = isCc
-                ? creditCardDisplayFromAccount(
-                    creditCardLimit(a),
-                    parseMoney(a.current_balance)
-                  )
-                : null;
+              const cc = isCc ? resolveCreditCardDisplay(a) : null;
               return (
                 <li
                   key={a.id}

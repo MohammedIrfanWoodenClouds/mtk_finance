@@ -3,8 +3,7 @@ import {
   isEmailConfigured,
   sendPasswordResetEmail,
 } from "@/lib/email";
-
-const API_URL = process.env.API_URL || "http://127.0.0.1:8000";
+import { getServerApiBaseUrl } from "@/lib/server-api-url";
 const SITE_URL = (process.env.SITE_URL || "http://localhost:3000").replace(
   /\/$/,
   ""
@@ -26,11 +25,14 @@ export async function POST(request: Request) {
     headers["X-Email-Internal-Secret"] = EMAIL_INTERNAL_SECRET;
   }
 
-  const res = await fetch(`${API_URL}/api/v1/auth/password-reset/request`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({ email }),
-  });
+  const res = await fetch(
+    `${getServerApiBaseUrl()}/api/v1/auth/password-reset/request`,
+    {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ email }),
+    }
+  );
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));

@@ -20,7 +20,7 @@ from app.models.user import User
 from app.schemas.report import FinanceReportRequest, ReportPeriod
 from app.services.ai_context_service import build_finance_context
 from app.services.balance_service import list_user_accounts, summarize_accounts
-from app.services.credit_card_math import amount_owed, available_credit
+from app.services.credit_card_math import credit_card_metrics
 from app.services.daily_report_types import FALLBACK_RECOMMENDATIONS, FinanceReportData
 from app.services.email_service import is_smtp_configured, send_email_with_attachment
 from app.services.pdf_report import build_finance_report_pdf
@@ -183,13 +183,24 @@ async def build_finance_report(
         bal = a.current_balance or Decimal("0")
         label = ACCOUNT_TYPE_LABELS.get(a.account_type, a.account_type)
         extra = ""
-        if a.account_type == "credit_card" and a.credit_limit:
-            avail = available_credit(a.credit_limit, bal)
-            used = amount_owed(bal)
-            extra = f", used limit {_money(used)}, avail {_money(avail)}"
-            if bal < 0:
-                extra += f", credit on card {_money(-bal)}"
-        display_bal = amount_owed(bal) if a.account_type == "credit_card" else bal
+        display_bal = bal
+        if a.account_type == "credit_card":
+            lim = (
+                a.credit_limit
+                if a.credit_limit is not None and a.credit_limit > 0
+                else None
+            )
+            m = credit_card_metrics(lim, bal)
+            display_bal = m.used_limit
+            if lim is not None:
+                extra = (
+                    f", used limit {_money(m.used_limit)}, "
+                    f"avail {_money(m.available)}"
+                )
+                if m.over_limit > 0:
+                    extra += f", over {_money(m.over_limit)}"
+            if m.credit_on_card > 0:
+                extra += f", credit on card {_money(m.credit_on_card)}"
         account_rows.append(
             {"name": a.name, "type": label + extra, "balance": display_bal}
         )

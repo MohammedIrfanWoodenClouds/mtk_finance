@@ -1,10 +1,7 @@
 import {
   cardInputsFromSignedBalance,
-  creditCardAvailableFrom,
-  creditCardCreditBalance,
-  creditCardDisplayFromAccount,
   creditCardUsedLimit,
-  signedBalanceFromCardInputs,
+  resolveCreditCardDisplay,
 } from "@/lib/credit-card-math";
 import type { Account } from "@/types";
 
@@ -124,35 +121,29 @@ export function creditCardLimit(account: Account): number | null {
 }
 
 export function creditCardAvailable(account: Account): number | null {
-  const limit = creditCardLimit(account);
-  if (limit == null) return null;
-  return creditCardAvailableFrom(limit, parseMoney(account.current_balance));
+  const d = resolveCreditCardDisplay(account);
+  return d?.available ?? null;
 }
 
 export function creditCardUsedLimitOnAccount(account: Account): number {
-  return creditCardUsedLimit(parseMoney(account.current_balance));
+  const d = resolveCreditCardDisplay(account);
+  return d?.usedLimit ?? creditCardUsedLimit(parseMoney(account.current_balance));
 }
 
 export function creditCardOverLimitAmount(account: Account): number | null {
-  const d = creditCardDisplayFromAccount(
-    creditCardLimit(account),
-    parseMoney(account.current_balance)
-  );
-  return d.overLimit > 0 ? d.overLimit : null;
+  const d = resolveCreditCardDisplay(account);
+  return d && d.overLimit > 0 ? d.overLimit : null;
 }
 
 export function creditCardCreditOnAccount(account: Account): number | null {
-  if (account.account_type !== "credit_card") return null;
-  const credit = creditCardCreditBalance(parseMoney(account.current_balance));
-  return credit > 0 ? credit : null;
+  const d = resolveCreditCardDisplay(account);
+  if (!d || d.creditOnCard <= 0) return null;
+  return d.creditOnCard;
 }
 
 export function creditCardUtilization(account: Account): number | null {
-  const d = creditCardDisplayFromAccount(
-    creditCardLimit(account),
-    parseMoney(account.current_balance)
-  );
-  return d.utilizationPct;
+  const d = resolveCreditCardDisplay(account);
+  return d?.utilizationPct ?? null;
 }
 
 /** Human-readable label for account selectors */
@@ -181,8 +172,9 @@ export function formatAccountBalanceLabel(account: Account): string {
 export {
   cardInputsFromSignedBalance,
   creditCardDisplayFromAccount,
+  resolveCreditCardDisplay,
   signedBalanceFromCardInputs,
-};
+} from "@/lib/credit-card-math";
 
 export function balanceFieldLabel(accountType: string): string {
   return openingBalanceLabel(accountType);

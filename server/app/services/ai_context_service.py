@@ -8,7 +8,7 @@ from app.constants import ACCOUNT_TYPE_LABELS, is_liability_account
 from app.models.category import Category
 from app.models.transaction import Transaction
 from app.services.balance_service import list_user_accounts, summarize_accounts
-from app.services.credit_card_math import amount_owed, available_credit, used_limit
+from app.services.credit_card_math import credit_card_metrics
 
 
 def _decimal_str(v: Decimal | None) -> str:
@@ -45,9 +45,17 @@ def build_finance_context(db: Session, user_id: UUID) -> str:
         f"Total assets (cash, bank, investments): {_decimal_str(totals['total_assets'])}",
         f"Total liabilities owed (cards, loans): {_decimal_str(totals['total_liabilities'])}",
         f"Net worth (assets minus liabilities): {_decimal_str(totals['net_worth'])}",
-        "",
-        "### Assets",
     ]
+    if totals.get("has_credit_limits"):
+        lines.append(
+            f"Credit cards — total used limit: {_decimal_str(totals['total_credit_outstanding'])}, "
+            f"available across cards: {_decimal_str(totals['available_credit'])}"
+        )
+        if totals.get("portfolio_utilization_pct") is not None:
+            lines.append(
+                f"Portfolio utilization: {totals['portfolio_utilization_pct']}%"
+            )
+    lines.extend(["", "### Assets"])
 
     if not asset_accounts:
         lines.append("- No asset accounts")
@@ -65,25 +73,28 @@ def build_finance_context(db: Session, user_id: UUID) -> str:
         for a in liability_accounts:
             label = ACCOUNT_TYPE_LABELS.get(a.account_type, a.account_type)
             extra = ""
-            if a.account_type == "credit_card" and a.credit_limit:
-                bal = a.current_balance or Decimal("0")
-                avail = available_credit(a.credit_limit, bal)
-                extra = (
-                    f", limit {_decimal_str(a.credit_limit)}, "
-                    f"used limit {_decimal_str(used_limit(bal))}, "
-                    f"available {_decimal_str(avail)}"
-                )
-                if bal < 0:
-                    extra += f", credit on card {_decimal_str(-bal)}"
-            if a.institution_name:
-                extra += f", lender/issuer: {a.institution_name}"
             bal = a.current_balance or Decimal("0")
             if a.account_type == "credit_card":
-                bal_part = f"used limit {_decimal_str(used_limit(bal))}"
-                if bal < 0:
-                    bal_part += f", credit on card {_decimal_str(-bal)}"
+                lim = (
+                    a.credit_limit
+                    if a.credit_limit is not None and a.credit_limit > 0
+                    else None
+                )
+                m = credit_card_metrics(lim, bal)
+                bal_part = f"used limit {_decimal_str(m.used_limit)}"
+                if m.credit_on_card > 0:
+                    bal_part += f", credit on card {_decimal_str(m.credit_on_card)}"
+                if lim is not None:
+                    extra = (
+                        f", limit {_decimal_str(lim)}, "
+                        f"available {_decimal_str(m.available)}"
+                    )
+                    if m.over_limit > 0:
+                        extra += f", over limit {_decimal_str(m.over_limit)}"
             else:
                 bal_part = f"owed {_decimal_str(bal)}"
+            if a.institution_name:
+                extra += f", lender/issuer: {a.institution_name}"
             lines.append(f"- {a.name} ({label}): {bal_part}{extra}")
 
     expense_by_cat: dict[str, Decimal] = {}
