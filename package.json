@@ -12,7 +12,8 @@
     "clean": "node -e \"try{require('fs').rmSync('.next',{recursive:true,force:true})}catch(e){}\"",
     "db:migrate": "cross-env PYTHONPATH=server .venv/Scripts/python -m alembic upgrade head",
     "db:revision": "cross-env PYTHONPATH=server .venv/Scripts/python -m alembic revision --autogenerate -m",
-    "db:check": "cross-env PYTHONPATH=server .venv/Scripts/python scripts/db_check.py"
+    "db:check": "cross-env PYTHONPATH=server .venv/Scripts/python scripts/db_check.py",
+    "report:daily": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/send-daily-report.ps1"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",

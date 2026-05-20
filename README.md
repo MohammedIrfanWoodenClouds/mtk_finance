@@ -93,6 +93,28 @@ All outbound mail is delivered to `MAIL_TO`. Configure Gmail app password in `.e
 
 Set `GEMINI_API_KEY` and `GEMINI_MODEL=gemini-flash-latest` in `.env`. Optional `GEMINI_API_KEY2` from another Google Cloud project.
 
+## Daily PDF report (email)
+
+Every day at **11:59 PM** (`Asia/Kolkata`, see `vercel.json` crons), MTK Finance emails a PDF with balances, today’s transactions, and AI recommendations.
+
+| Variable | Purpose |
+|----------|---------|
+| `SMTP_*` + `MAIL_TO` | Required — PDF is sent to `MAIL_TO` (same as other mail) |
+| `GEMINI_API_KEY` | AI recommendations section |
+| `CRON_SECRET` | Secure manual/cron calls (`Authorization: Bearer …`) |
+| `DAILY_REPORT_ENABLED` | Set `false` to disable |
+| `REPORT_TIMEZONE` | Date boundary for “today” (default `Asia/Kolkata`) |
+
+**Vercel:** add `CRON_SECRET` in project env. Cron path: `GET /api/v1/cron/daily-report`.
+
+**Local test** (API running):
+
+```bash
+npm run report:daily
+```
+
+**Manual reports** (in the app): open **Reports** — choose daily, weekly, monthly, or custom dates, then **Download PDF** or **Send to email**.
+
 ## License
 
 Private — personal use.

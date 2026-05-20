@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   ArrowLeftRight,
   CreditCard,
+  FileText,
   Home,
   MessageCircle,
   Settings,
@@ -18,6 +19,7 @@ const navItems = [
   { href: "/assistant", label: "Assistant", icon: MessageCircle },
   { href: "/accounts", label: "Accounts", icon: Wallet },
   { href: "/transactions", label: "Activity", icon: ArrowLeftRight },
+  { href: "/reports", label: "Reports", icon: FileText },
   { href: "/categories", label: "Categories", icon: Tags },
   { href: "/settings", label: "Settings", icon: Settings },
 ];

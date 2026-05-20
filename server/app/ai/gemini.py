@@ -306,6 +306,77 @@ async def chat_with_gemini(
     )
 
 
+REPORT_INSIGHTS_PROMPT = """You are MTK Finance writing the "AI recommendations" section of a daily email report.
+
+Rules:
+- Use ONLY the financial snapshot and today's activity below.
+- Write 4–6 concise bullet points (use • or -).
+- Cover: today's spending, balances, credit/loan risk, and one practical action for tomorrow.
+- Plain language, INR currency.
+- Do NOT claim you changed any data in the app.
+- If there was no activity today, focus on balances and habit reminders.
+"""
+
+
+async def generate_report_insights(
+    *,
+    finance_context: str,
+    day_summary: str,
+    settings: Settings | None = None,
+    period_label: str = "Daily",
+) -> str:
+    """One-shot Gemini call for finance reports (no per-user rate limit)."""
+    settings = settings or get_settings()
+    keys = settings.gemini_api_keys
+    if not keys:
+        raise HTTPException(
+            status_code=503,
+            detail="AI is not configured for report insights.",
+        )
+
+    user_message = (
+        f"{REPORT_INSIGHTS_PROMPT}\n\n"
+        f"### Report period: {period_label}\n{day_summary}\n\n"
+        f"### Snapshot\n{finance_context}"
+    )
+
+    payload = {
+        "systemInstruction": {
+            "parts": [{"text": SYSTEM_PROMPT}],
+        },
+        "contents": [{"role": "user", "parts": [{"text": user_message}]}],
+        "generationConfig": {
+            "temperature": 0.5,
+            "maxOutputTokens": min(800, settings.GEMINI_MAX_OUTPUT_TOKENS),
+        },
+    }
+
+    models = settings.gemini_models
+    pool = _settings_pool(settings)
+    slots = pool.available_slots()
+    if not slots:
+        raise HTTPException(status_code=429, detail=QUOTA_EXHAUSTED_USER_MESSAGE)
+
+    async with httpx.AsyncClient(timeout=90.0) as client:
+        for slot in slots:
+            for model in models:
+                if not _is_model_available(slot.label, model):
+                    continue
+                try:
+                    return await _request_once(
+                        client,
+                        model=model,
+                        api_key=slot.api_key,
+                        payload=payload,
+                        max_retries=settings.GEMINI_MAX_RETRIES,
+                        retry_base_sec=settings.GEMINI_RETRY_BASE_SEC,
+                    )
+                except _KeyAttemptFailed:
+                    continue
+
+    raise HTTPException(status_code=429, detail=QUOTA_EXHAUSTED_USER_MESSAGE)
+
+
 def reset_ai_runtime_state() -> None:
     """Clear in-memory cooldowns (e.g. after reload or exhausted-key false positives)."""
     from app.ai.gemini_keys import reset_key_pool

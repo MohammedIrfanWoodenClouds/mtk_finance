@@ -14,6 +14,13 @@
       "excludeFiles": "{tests/**,__pycache__/**,.venv/**,**/*.pyc,alembic/**}"
     }
   },
+  "crons": [
+    {
+      "path": "/api/v1/cron/daily-report",
+      "schedule": "59 23 * * *",
+      "timezone": "Asia/Kolkata"
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/v1/(.*)",

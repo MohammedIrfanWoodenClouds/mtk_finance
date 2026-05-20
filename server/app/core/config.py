@@ -62,6 +62,17 @@ class Settings(BaseSettings):
     GEMINI_MODEL_QUOTA_COOLDOWN_SECONDS: int = 300
 
     EMAIL_INTERNAL_SECRET: str = ""
+    CRON_SECRET: str = ""
+
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASS: str = ""
+    SMTP_FROM: str = ""
+    MAIL_TO: str = ""
+
+    DAILY_REPORT_ENABLED: bool = True
+    REPORT_TIMEZONE: str = "Asia/Kolkata"
 
     MAX_LOGIN_ATTEMPTS: int = 5
     LOGIN_LOCKOUT_MINUTES: int = 15
