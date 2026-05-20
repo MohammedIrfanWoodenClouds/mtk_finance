@@ -62,13 +62,17 @@ Default admin (seeded on API startup): `admin@mtkfin.com` / `pass123` — change
 | `SMTP_*` + `MAIL_TO` | For email | Gmail app password |
 | `EMAIL_INTERNAL_SECRET` | For email | Random secret (Next ↔ API) |
 
-3. Deploy. Run migrations against production DB:
+3. Deploy, then **apply DB migrations** (required after schema changes):
 
 ```bash
+# Use DIRECT_URL in .env (Supabase → Database → Direct connection)
 npm run db:migrate
+npm run db:check
 ```
 
-4. Verify: `GET https://your-app.vercel.app/api/health`
+If migrate cannot connect from your machine, run `scripts/apply-pending-schema.sql` in **Supabase → SQL Editor**.
+
+4. Verify: `GET https://your-app.vercel.app/api/health` — should show `"status":"ok"` with no `schema.missing` field.
 
 **Production behavior**
 

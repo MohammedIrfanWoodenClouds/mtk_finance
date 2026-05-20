@@ -9,6 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "server"))
 from sqlalchemy import text
 
 from app.core.database import SessionLocal, engine
+from app.schema_guard import check_schema_columns
 from app.seed import ADMIN_EMAIL, ensure_admin_user
 
 
@@ -36,6 +37,14 @@ def main() -> int:
 
     db = SessionLocal()
     try:
+        schema = check_schema_columns(db)
+        if schema["ok"]:
+            print("  Schema: OK")
+        else:
+            print(f"  Schema: OUT OF DATE — missing {', '.join(schema['missing'])}")
+            print("  → Run: npm run db:migrate  (use DIRECT_URL in .env for Supabase)")
+            return 1
+
         user = ensure_admin_user(db)
         print(f"  Admin user: {user.email} (id={user.id})")
         count = db.execute(text("SELECT COUNT(*) FROM users")).scalar()
